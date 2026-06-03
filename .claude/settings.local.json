@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.anthropic.com)",
+      "Bash(tar -tzf /Users/abhirammenon/.claude/projects/-Users-abhirammenon-Desktop-Avenor/5b0fc0db-d216-4392-aa39-010987fd9aaf/tool-results/webfetch-1780143118268-pi909d.bin)"
+    ]
+  }
+}

@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Avenor — Capture-first iOS planner</title>
+<link rel="stylesheet" href="assets/site.css"/>
+<link rel="stylesheet" href="assets/phones.css"/>
+</head>
+
+<body data-screen-label="01 Home">
+
+<!-- ── Nav ──────────────────────────────────────────────────────────── -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="index.html"><img src="assets/Avenor_Logo_Dark.png" alt=""/><span>Avenor</span></a>
+    <ul class="nav-links">
+      <li><a href="index.html" class="active">Home</a></li>
+      <li><a href="capture.html">Capture</a></li>
+      <li><a href="features.html">Features</a></li>
+      <li><a href="themes.html">Themes</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <a class="btn btn-primary" href="#access">Get early access</a>
+    <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
+      <span class="bars"><span></span></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-drawer" id="nav-drawer">
+  <ul>
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="capture.html">Capture</a></li>
+    <li><a href="features.html">Features</a></li>
+    <li><a href="themes.html">Themes</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+  <a href="#access" class="drawer-cta">Get early access</a>
+</div>
+
+<main>
+
+<!-- ── 1 Hero ───────────────────────────────────────────────────────── -->
+<section class="hero-center">
+  <div class="wrap reveal stagger in">
+    <div class="eyebrow">Coming to the App Store</div>
+    <h1 class="display h-72">Capture everything.</h1>
+    <p class="sub-22">Tasks, notes, goals, calendar. One bar.</p>
+    <form class="email-card" data-endpoint="https://formspree.io/f/mojbypae">
+      <input type="email" placeholder="your@email.com" autocomplete="email" required/>
+      <button type="submit">Notify me</button>
+    </form>
+    <p class="email-note">No spam. One email when we launch.</p>
+  </div>
+</section>
+
+<!-- ── 2 Live capture demo ─────────────────────────────────────────── -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">The Capture Bar</div>
+      <h2 class="display h-48">Type how you think.</h2>
+      <p class="sub-18">Avenor reads your intent. No tapping through menus.</p>
+    </div>
+
+    <!-- CROWN JEWEL: interactive parsing simulator.
+         data-autoplay → site.js cycles the presets automatically when the
+         box scrolls into view (pauses on hover / tab away / interaction).
+         As text types, keywords become inline token pills and the matching
+         status icons below light up. -->
+    <div class="capture-box reveal" data-demo data-autoplay>
+      <div class="capture-bar">
+        <span class="prompt">&gt;</span>
+        <span class="typed"></span><span class="placeholder">Capture intent…</span>
+        <span class="caret"></span>
+      </div>
+
+      <!-- INJECTED — status icons (Lucide-style stroke SVGs) that light up
+           per resolved facet: type / date / time / priority / tag. -->
+      <div class="capture-status" aria-hidden="true">
+        <span class="status-icon" data-status="type" title="Type detected">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h12"/></svg>Type
+        </span>
+        <span class="status-icon" data-status="date" title="Date parsed">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Date
+        </span>
+        <span class="status-icon" data-status="time" title="Time parsed">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Time
+        </span>
+        <span class="status-icon" data-status="priority" title="Priority flagged">
+          <svg viewBox="0 0 24 24"><path d="M4 22V4M4 4h13l-2 4 2 4H4"/></svg>Priority
+        </span>
+        <span class="status-icon" data-status="tag" title="Tag attached">
+          <svg viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>Tag
+        </span>
+      </div>
+
+      <div class="demo-buttons">
+        <button class="btn btn-pill" data-text="gym tomorrow @7am !!">gym tomorrow @7am !!</button>
+        <button class="btn btn-pill" data-text="#UI new onboarding flow">#UI new onboarding flow</button>
+        <button class="btn btn-pill" data-text="finish pitch deck in 3 days">finish pitch deck in 3 days</button>
+      </div>
+
+      <div class="parse-card">
+        <div class="parse-rail"></div>
+        <div class="parse-body">
+          <div class="parse-meta"></div>
+          <div class="parse-title"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols-3 reveal stagger"><!-- INJECTED: stagger → cards rise in sequence -->
+      <div class="col-3-item">
+        <span class="glyph">#</span>
+        <div class="eyebrow">Idea capture</div>
+        <h3>Tagged on type.</h3>
+        <p>Add a # and Avenor files it as an idea with the tag attached.</p>
+      </div>
+      <div class="col-3-item">
+        <span class="glyph">@</span>
+        <div class="eyebrow">Time parsing</div>
+        <h3>Natural language dates.</h3>
+        <p>@5pm, tomorrow, next Monday, in&nbsp;3&nbsp;days — all understood.</p>
+      </div>
+      <div class="col-3-item">
+        <span class="glyph">!!</span>
+        <div class="eyebrow">Priority flagging</div>
+        <h3>Three bangs, three levels.</h3>
+        <p>!, !!, !!! map to P3, P2, P1. The capture bar stays one line.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 3 Unification ───────────────────────────────────────────────── -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">One app</div>
+      <h2 class="display h-48">Stop juggling five apps.</h2>
+      <p class="sub-18">Tasks, notes, goals, and calendar. All behind one bar.</p>
+    </div>
+
+    <!-- Five icons → one ribbon -->
+    <div class="reveal" style="display:flex; align-items:center; justify-content:center; gap: 18px; flex-wrap: wrap; margin-bottom: 56px;">
+      <div style="display:flex; gap:14px;">
+        <div class="icon-stub" title="Reminders">R</div>
+        <div class="icon-stub" title="Bear">B</div>
+        <div class="icon-stub" title="Notion">N</div>
+        <div class="icon-stub" title="Fantastical">F</div>
+        <div class="icon-stub" title="Todoist">T</div>
+      </div>
+      <span class="arrow-stub">→</span>
+      <img src="assets/Avenor_Logo_Dark.png" alt="Avenor" style="width: 52px; height: 52px;"/>
+    </div>
+    <style>
+      .icon-stub {
+        width: 44px; height: 44px;
+        border-radius: 10px;
+        border: 1px solid var(--hairline);
+        background: var(--card);
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--fg-3);
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 16px;
+        opacity: 0.55;
+        filter: saturate(0);
+        transition: opacity 600ms ease 0ms;
+      }
+      .reveal.in .icon-stub { opacity: 0.32; }
+      .arrow-stub { color: var(--fg-3); font-size: 24px; font-family: var(--font-mono); }
+    </style>
+
+    <div class="grid-22 reveal stagger"><!-- INJECTED: stagger -->
+      <div class="feat-card">
+        <div class="copy">
+          <div class="eyebrow">Tasks</div>
+          <h3>Capture, prioritize, complete.</h3>
+        </div>
+        <div class="shot"><div data-phone="tasks" data-size="sm"></div></div>
+      </div>
+      <div class="feat-card">
+        <div class="copy">
+          <div class="eyebrow">Notes</div>
+          <h3>Brain dumps that stay organized.</h3>
+        </div>
+        <div class="shot"><div data-phone="notes" data-size="sm"></div></div>
+      </div>
+      <div class="feat-card">
+        <div class="copy">
+          <div class="eyebrow">Goals</div>
+          <h3>Set targets. Track progress.</h3>
+        </div>
+        <div class="shot"><div data-phone="goals" data-size="sm"></div></div>
+      </div>
+      <div class="feat-card">
+        <div class="copy">
+          <div class="eyebrow">Calendar</div>
+          <h3>See your week. Not your overwhelm.</h3>
+        </div>
+        <div class="shot"><div data-phone="calendar" data-size="sm"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 4 Theme teaser ─────────────────────────────────────────────── -->
+<section>
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Four themes</div>
+      <h2 class="display h-48">One feeling, four faces.</h2>
+    </div>
+
+    <div class="theme-strip reveal stagger"><!-- INJECTED: stagger -->
+      <div class="theme-tile">
+        <div data-phone="command-empty" data-theme="dark" data-size="sm"></div>
+        <span class="label">Stark Dark</span>
+      </div>
+      <div class="theme-tile">
+        <div data-phone="command-empty" data-theme="light" data-size="sm"></div>
+        <span class="label">Stark Light</span>
+      </div>
+      <div class="theme-tile">
+        <div data-phone="command-empty" data-theme="earth" data-size="sm"></div>
+        <span class="label">Calm Earth</span>
+      </div>
+      <div class="theme-tile">
+        <div data-phone="command-empty" data-theme="glass" data-size="sm"></div>
+        <span class="label">Liquid Glass</span>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top: 48px;" class="reveal">
+      <a href="themes.html" class="btn btn-ghost">Explore themes →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── 5 Access ────────────────────────────────────────────────────── -->
+<section id="access" style="padding: 100px 0 120px;">
+  <div class="wrap reveal" style="text-align: center;">
+    <h2 class="display h-32" style="margin: 0 auto 24px; max-width: 540px;">Be first to know when we launch.</h2>
+    <form class="email-card" data-endpoint="https://formspree.io/f/mojbypae">
+      <input type="email" placeholder="your@email.com" autocomplete="email" required/>
+      <button type="submit">Notify me</button>
+    </form>
+    <p class="email-note">No spam. Just a single launch email.</p>
+  </div>
+</section>
+
+</main>
+
+<!-- ── Footer ───────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>© 2026 Avenor</div>
+    <div class="footer-center"><a href="#">@avenor_app</a> · Twitter · Instagram</div>
+    <div class="footer-right"><a href="#">avenor.app</a></div>
+  </div>
+</footer>
+
+<script src="assets/phones.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>
