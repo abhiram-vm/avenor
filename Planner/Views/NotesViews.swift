@@ -53,12 +53,10 @@ struct NoteRow: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .onAppear {
-            if note.title.isEmpty {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    isTitleFocused = true
-                }
-            }
+        // `.task` fires after the first render, which is when the field is
+        // attachable — focusing a brand-new empty row without a timing hack.
+        .task {
+            if note.title.isEmpty { isTitleFocused = true }
         }
     }
 

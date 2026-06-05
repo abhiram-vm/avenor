@@ -28,7 +28,7 @@ struct ContentView: View {
                 .tag(2)
 
             GoalsTabView()
-                .tabItem { Label("Progress", systemImage: "scope") }
+                .tabItem { Label("Goals", systemImage: "scope") }
                 .tag(3)
 
             CalendarTabView()

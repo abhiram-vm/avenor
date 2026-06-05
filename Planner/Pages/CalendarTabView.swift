@@ -24,7 +24,7 @@ struct CalendarTabView: View {
         let p = theme.palette
         NavigationStack {
             ZStack {
-                canvasLayer(p)
+                p.canvasView
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.stackLarge) {
@@ -39,19 +39,6 @@ struct CalendarTabView: View {
             }
             .navigationTitle("Calendar")
             .navigationBarTitleDisplayMode(.inline)
-        }
-    }
-
-    // MARK: Canvas
-
-    @ViewBuilder
-    private func canvasLayer(_ p: ThemePalette) -> some View {
-        switch p.canvas {
-        case .solid(let c):
-            c.ignoresSafeArea()
-        case .gradient(let stops, let start, let end):
-            LinearGradient(stops: stops, startPoint: start, endPoint: end)
-                .ignoresSafeArea()
         }
     }
 
@@ -257,7 +244,7 @@ struct CalendarTabView: View {
                 StarkSwipeRow(
                     leading: StarkSwipeAction(
                         systemImage: "checkmark",
-                        label: completionLabel(for: task),
+                        label: task.completionVerb,
                         perform: { complete(task) }
                     ),
                     trailing: StarkSwipeAction(
@@ -290,14 +277,6 @@ struct CalendarTabView: View {
     }
 
     // MARK: Task mutation
-
-    private func completionLabel(for task: PersistedTask) -> String {
-        switch task.type {
-        case .todo: return "Done"
-        case .reminder: return "Ack"
-        case .idea: return "Shipped"
-        }
-    }
 
     private func complete(_ task: PersistedTask) {
         withAnimation(spring) {

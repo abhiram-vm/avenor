@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "C4AD5FF62F32E37D00A6E23A"
-               BuildableName = "Planner.app"
+               BuildableName = "Avenor.app"
                BlueprintName = "Planner"
                ReferencedContainer = "container:Planner.xcodeproj">
             </BuildableReference>
@@ -46,7 +46,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "C4AD5FF62F32E37D00A6E23A"
-            BuildableName = "Planner.app"
+            BuildableName = "Avenor.app"
             BlueprintName = "Planner"
             ReferencedContainer = "container:Planner.xcodeproj">
          </BuildableReference>
@@ -63,7 +63,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "C4AD5FF62F32E37D00A6E23A"
-            BuildableName = "Planner.app"
+            BuildableName = "Avenor.app"
             BlueprintName = "Planner"
             ReferencedContainer = "container:Planner.xcodeproj">
          </BuildableReference>

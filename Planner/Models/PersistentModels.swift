@@ -54,6 +54,11 @@ final class PersistedTask {
     var ideaStatusRaw: String?
     var ideaTag: String?
 
+    /// Priority marker (1 = highest … 3 = lowest), mirrored from the capture
+    /// bangs (`!!!`→1, `!!`→2, `!`→3). Optional so legacy / CloudKit rows
+    /// default cleanly to "no priority". Surfaced through `priorityLevel`.
+    var priority: Int?
+
     /// Optional, loose foreign key linking this task to a `PersistedGoal.id`.
     /// Phase 7 scaffolding: deliberately *not* a `@Relationship` macro so we
     /// stay CloudKit-safe (no inverse constraint required, no strict
@@ -74,6 +79,7 @@ final class PersistedTask {
         endDate: Date? = nil,
         ideaStatus: IdeaStatus? = nil,
         ideaTag: String? = nil,
+        priority: Int? = nil,
         parentGoalID: UUID? = nil,
         sortOrder: Int = nextDefaultSortOrder(),
         createdAt: Date = .now,
@@ -90,6 +96,7 @@ final class PersistedTask {
         self.endDate = endDate
         self.ideaStatusRaw = ideaStatus?.rawValue
         self.ideaTag = ideaTag
+        self.priority = priority
         self.parentGoalID = parentGoalID
         self.sortOrder = sortOrder
         self.createdAt = createdAt
@@ -104,6 +111,56 @@ final class PersistedTask {
     var ideaStatus: IdeaStatus? {
         get { ideaStatusRaw.flatMap(IdeaStatus.init) }
         set { ideaStatusRaw = newValue?.rawValue }
+    }
+
+    /// Typed accessor for `priority`. `nil` (and any out-of-range legacy value)
+    /// reads as "no priority", which sorts below `.p3` in hierarchical mode.
+    var priorityLevel: PriorityLevel? {
+        get { priority.flatMap(PriorityLevel.init(rawValue:)) }
+        set { priority = newValue?.rawValue }
+    }
+
+    /// Type-aware label for the leading "complete" swipe action.
+    var completionVerb: String {
+        switch type {
+        case .todo: return "Done"
+        case .reminder: return "Ack"
+        case .idea: return "Shipped"
+        }
+    }
+}
+
+// MARK: - Task ordering
+//
+// Pure, view-agnostic sort used by the Tasks list toggle. Kept on the model
+// layer so non-view callers (Overview, Calendar) can reuse the exact ordering.
+//   • .chronological → soonest deadline first; undated drop to the bottom,
+//     ties broken by `sortOrder` (newest-first negative epoch).
+//   • .hierarchical  → most urgent first (P1 → P2 → P3 → unprioritized), then
+//     by deadline. Unprioritized tasks use a `99` sentinel so they sit cleanly
+//     beneath every explicit `PriorityLevel`.
+
+extension Array where Element == PersistedTask {
+    func sorted(by mode: TaskSortMode) -> [PersistedTask] {
+        switch mode {
+        case .chronological:
+            return sorted { lhs, rhs in
+                let l = lhs.dueDate ?? .distantFuture
+                let r = rhs.dueDate ?? .distantFuture
+                if l != r { return l < r }
+                return lhs.sortOrder < rhs.sortOrder
+            }
+        case .hierarchical:
+            return sorted { lhs, rhs in
+                let priorityLhs = lhs.priorityLevel?.rawValue ?? 99
+                let priorityRhs = rhs.priorityLevel?.rawValue ?? 99
+                if priorityLhs != priorityRhs { return priorityLhs < priorityRhs }
+                let l = lhs.dueDate ?? .distantFuture
+                let r = rhs.dueDate ?? .distantFuture
+                if l != r { return l < r }
+                return lhs.sortOrder < rhs.sortOrder
+            }
+        }
     }
 }
 
@@ -240,6 +297,11 @@ final class PersistedGoal {
 
     var isAbandoned: Bool { status == .abandoned }
 
+    /// Rendering tint for rails, progress fills, and dots. Slightly damped
+    /// from the raw `tint` so chromatic accents read as deliberate rather
+    /// than saturated. Single source of truth for goal color intensity.
+    var displayTint: Color { tint.opacity(0.85) }
+
     // MARK: Derived
 
     var progress: Double {
@@ -334,6 +396,13 @@ final class PersistedHabit {
     /// keeps the column CloudKit-safe for legacy rows.
     var isArchived: Bool
 
+    /// Optional reference to a parent `PersistedGoal.id`. When set, this
+    /// routine is the execution system for that goal and renders nested
+    /// beneath it in the unified Goals interface. `nil` → standalone routine.
+    /// Optional with nil-default is a CloudKit-safe additive column —
+    /// no schema migration required.
+    var anchorGoalID: UUID?
+
     init(
         id: UUID = UUID(),
         title: String,
@@ -345,6 +414,7 @@ final class PersistedHabit {
         streakCount: Int = 0,
         lastCompletedAt: Date? = nil,
         isArchived: Bool = false,
+        anchorGoalID: UUID? = nil,
         sortOrder: Int = nextDefaultSortOrder(),
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -359,6 +429,7 @@ final class PersistedHabit {
         self.streakCount = streakCount
         self.lastCompletedAt = lastCompletedAt
         self.isArchived = isArchived
+        self.anchorGoalID = anchorGoalID
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -369,6 +440,12 @@ final class PersistedHabit {
     var recurrence: RecurrenceRule {
         get { RecurrenceRule(rawToken: recurrenceRaw) ?? .daily }
         set { recurrenceRaw = newValue.rawToken }
+    }
+
+    /// Typed accessor for `priority`. Mirrors `PersistedTask.priorityLevel`.
+    var priorityLevel: PriorityLevel? {
+        get { priority.flatMap(PriorityLevel.init(rawValue:)) }
+        set { priority = newValue?.rawValue }
     }
 
     /// Cadence label for row meta strips ("EVERY DAY", "EVERY MONDAY").
@@ -395,6 +472,9 @@ final class PersistedHabit {
     /// history). All mutations stamp `updatedAt` for last-writer-wins sync.
     func toggleToday(calendar: Calendar = .current) {
         let now = Date()
+        // Capture the resulting state BEFORE mutating so the parent-goal
+        // progress mirror knows which direction to move.
+        let willComplete = !isCompletedToday(calendar: calendar)
         if isCompletedToday(calendar: calendar) {
             streakCount = max(0, streakCount - 1)
             let startOfToday = calendar.startOfDay(for: now)
@@ -413,6 +493,25 @@ final class PersistedHabit {
             lastCompletedAt = now
         }
         updatedAt = now
+        syncAnchorGoalProgress(completed: willComplete)
+    }
+
+    /// Keep the parent `PersistedGoal.currentValue` perfectly mirrored with
+    /// this routine's completion state. Completing the loop bumps the goal +1
+    /// (clamped to `targetValue`); un-completing rolls it back −1 (clamped to
+    /// 0). Resolved through `self.modelContext` so the update lands in the
+    /// same transaction as the streak mutation. Fail-soft: a detached model,
+    /// missing goal, or absent anchor all no-op cleanly.
+    private func syncAnchorGoalProgress(completed: Bool) {
+        guard let goalID = anchorGoalID, let context = self.modelContext else { return }
+        var descriptor = FetchDescriptor<PersistedGoal>(
+            predicate: #Predicate { $0.id == goalID }
+        )
+        descriptor.fetchLimit = 1
+        guard let goal = try? context.fetch(descriptor).first else { return }
+        let delta = completed ? 1.0 : -1.0
+        goal.currentValue = max(0, min(goal.targetValue, goal.currentValue + delta))
+        goal.lastUpdatedAt = updatedAt
     }
 }
 
