@@ -37,12 +37,10 @@ struct TaskRow: View {
                 Label("Delete", systemImage: "trash")
             }
         }
-        .onAppear {
-            if task.title.isEmpty {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    isTitleFocused = true
-                }
-            }
+        // `.task` fires after the first render, which is when the field is
+        // attachable — focusing a brand-new empty row without a timing hack.
+        .task {
+            if task.title.isEmpty { isTitleFocused = true }
         }
         // Inline deadline edits flow straight into SwiftData via @Bindable;
         // re-schedule the local notification whenever the value settles.
@@ -72,15 +70,28 @@ struct TaskRow: View {
     private var accentRail: some View {
         Rectangle()
             .fill(railColor)
-            .frame(width: 2)
+            .frame(width: isHighPriority ? 3 : 2)
             .frame(maxHeight: .infinity)
+            .shadow(
+                color: isHighPriority ? theme.palette.accent.opacity(0.75) : .clear,
+                radius: isHighPriority ? 5 : 0
+            )
     }
 
     private var railColor: Color {
         if LifecycleAutomation.isIdeaStale(task) {
             return theme.palette.textTertiary
         }
+        if isHighPriority {
+            return theme.palette.accent
+        }
         return task.type.tint.opacity(0.85)
+    }
+
+    /// A live (non-stale) P1 task earns a glowing accent rail — the only
+    /// chromatic-weight signal that elevates an item above the type tint.
+    private var isHighPriority: Bool {
+        !LifecycleAutomation.isIdeaStale(task) && task.priorityLevel == .p1
     }
 
     // MARK: Content
@@ -138,7 +149,7 @@ struct TaskRow: View {
             .font(p.font(.micro))
             .tracking(p.microTracking)
             .textCase(.uppercase)
-            .monospacedDigit()
+            .conditionalMonospaced(monospaced)
             .foregroundStyle(p.textSecondary)
             .lineLimit(1)
     }

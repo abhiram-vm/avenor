@@ -158,6 +158,75 @@ enum TaskType: String, CaseIterable, Identifiable, Codable {
     var pillTitle: String { pillStyle.title }
 }
 
+// MARK: - PriorityLevel
+//
+// Typed wrapper over the loose `priority: Int?` already stored on
+// `PersistedHabit` (and, as of 1.3, `PersistedTask`). Raw values intentionally
+// match the LIVE capture convention — `!!!` parses to `1` (highest), `!` to `3`
+// (lowest), and the user-facing label is "P1" for top priority. Defining `p1`
+// as rawValue `1` preserves every stored int and the existing label, rather
+// than inverting them. `Comparable` is by rawValue, so ascending order surfaces
+// the most urgent item first (`.p1 < .p2 < .p3`).
+
+enum PriorityLevel: Int, Codable, CaseIterable, Identifiable, Comparable {
+    case p1 = 1   // High (most urgent)
+    case p2 = 2   // Medium
+    case p3 = 3   // Low
+
+    var id: Int { rawValue }
+
+    static func < (lhs: PriorityLevel, rhs: PriorityLevel) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+
+    /// Compact uppercase label for meta strips ("P1" / "P2" / "P3").
+    var label: String { "P\(rawValue)" }
+
+    var displayName: String {
+        switch self {
+        case .p1: return "High"
+        case .p2: return "Medium"
+        case .p3: return "Low"
+        }
+    }
+
+    var glyph: String {
+        switch self {
+        case .p1: return "exclamationmark.3"
+        case .p2: return "exclamationmark.2"
+        case .p3: return "exclamationmark"
+        }
+    }
+}
+
+// MARK: - TaskSortMode
+//
+// Toggle for the Tasks list ordering. `.chronological` sorts by deadline;
+// `.hierarchical` sorts by urgency (P1 → P3 → unprioritized). The actual
+// comparator lives in the `[PersistedTask].sorted(by:)` helper alongside the
+// model so non-view callers can reuse it.
+
+enum TaskSortMode: String, CaseIterable, Identifiable {
+    case chronological
+    case hierarchical
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .chronological: return "By Date"
+        case .hierarchical:  return "By Priority"
+        }
+    }
+
+    var glyph: String {
+        switch self {
+        case .chronological: return "calendar"
+        case .hierarchical:  return "flag"
+        }
+    }
+}
+
 enum IdeaStatus: String, CaseIterable, Identifiable, Equatable, Codable {
     case thinking, inProgress, completed
 
@@ -287,6 +356,11 @@ enum UnitPreset: String, CaseIterable, Identifiable, Codable {
 enum GoalStatus: String, CaseIterable, Identifiable, Codable {
     case active
     case abandoned
+    /// Retired by the 1.3 Goal→Habit migration. The numeric goal is kept in
+    /// the store (data-safe) but hidden from the active workspace; its content
+    /// lives on as a `PersistedHabit` loop. Distinct from `.abandoned` so the
+    /// archive doesn't mislabel migrated goals as user-abandoned.
+    case converted
 
     var id: String { rawValue }
 
@@ -294,6 +368,7 @@ enum GoalStatus: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .active:    return "Active"
         case .abandoned: return "Abandoned"
+        case .converted: return "Converted"
         }
     }
 }

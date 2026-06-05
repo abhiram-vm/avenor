@@ -31,7 +31,7 @@ struct GoalRowCell: View {
         let p = theme.palette
         HStack(spacing: 0) {
             Rectangle()
-                .fill(goal.tint.opacity(0.85))
+                .fill(goal.displayTint)
                 .frame(width: 2)
                 .frame(maxHeight: .infinity)
 
@@ -156,7 +156,7 @@ struct GoalRowCell: View {
                 Rectangle()
                     .fill(p.hairline)
                 Rectangle()
-                    .fill(goal.tint.opacity(isScrubbing ? 1.0 : 0.85))
+                    .fill(isScrubbing ? goal.tint : goal.displayTint)
                     .frame(width: max(0, min(1, goal.progress)) * geo.size.width)
             }
         }
@@ -222,13 +222,31 @@ struct GoalRowCell: View {
     }
 }
 
-// MARK: - Add Goal Sheet (preserved — sheet pass pending)
+// MARK: - Add Goal Sheet (Phase 2: two-step creation flow)
+//
+// Step 1 (.goal): the existing goal form — title, unit, target, color, icon.
+//   CTA: "Next →" advances to step 2.
+//
+// Step 2 (.defineSystem): "Define Your System" prompt.
+//   • Pre-filled routine TextField ("Progress tracking for [Goal Title]").
+//   • Recurrence chip row (Every Day / Weekdays / individual day chips).
+//   • CTA: "Confirm" atomically inserts both PersistedGoal + PersistedHabit
+//     (anchorGoalID linked). "Skip routine setup" inserts only the goal.
+//
+// The sheet owns its own modelContext insertion so GoalsTabView can call
+// AddGoalSheet() with no arguments — keeps the call site minimal.
 
 struct AddGoalSheet: View {
-    @Binding var draft: NewGoalDraft
-    var onAdd: (NewGoalDraft) -> Void
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeStore.self) private var theme
+
+    // MARK: Step tracking
+    enum CreationStep: Equatable { case goal, defineSystem }
+    @State private var step: CreationStep = .goal
+
+    // MARK: Goal draft (fully internal — fresh on each sheet presentation)
+    @State private var draft = NewGoalDraft()
 
     private let colorChoices: [Color] = [.blue, .indigo, .purple, .pink, .red, .orange, .yellow, .green, .teal]
 
@@ -251,6 +269,19 @@ struct AddGoalSheet: View {
     @State private var customSymbol: String = ""
     @State private var customAllowsDecimals: Bool = false
     @State private var customPrefix: Bool = false
+
+    // MARK: Routine draft (step 2)
+    @State private var routineTitle: String = ""
+    @FocusState private var routineFocused: Bool
+    @State private var routineRecurrence: RecurrenceRule = .daily
+
+    // Single-letter day tokens, ordered Mon→Sun. `num` follows
+    // Calendar.current weekday numbering (1=Sun…7=Sat); `letter` is the
+    // absolute first letter of the day name.
+    private static let weekdayChips: [(num: Int, letter: String)] = [
+        (2, "M"), (3, "T"), (4, "W"),
+        (5, "T"), (6, "F"), (7, "S"), (1, "S")
+    ]
 
     // MARK: Derived
 
@@ -281,50 +312,264 @@ struct AddGoalSheet: View {
         !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    // MARK: Body
+
     var body: some View {
         let p = theme.palette
         NavigationStack {
-            ScrollView {
-                VStack(spacing: DesignTokens.Spacing.stackLarge) {
-                    detailsCard
-                    unitCard
-                    valuesCard
-                    colorCard
-                    iconCard
+            Group {
+                switch step {
+                case .goal:
+                    goalScrollContent
+                        .transition(.asymmetric(
+                            insertion: .opacity,
+                            removal: .opacity.combined(with: .move(edge: .leading))
+                        ))
+                case .defineSystem:
+                    systemScrollContent
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .move(edge: .trailing)),
+                            removal: .opacity
+                        ))
                 }
-                .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
-                .padding(.top, DesignTokens.Spacing.pageTop)
-                .padding(.bottom, DesignTokens.Spacing.pageBottom)
             }
-            .scrollIndicators(.hidden)
-            .livingCanvas(p)
-            .navigationTitle("New Goal")
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: step)
+            .navigationTitle(step == .goal ? "New Goal" : "Define Your System")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                switch step {
+                case .goal:
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                            .foregroundStyle(p.textSecondary)
+                    }
+                case .defineSystem:
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                                step = .goal
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text("Back")
+                            }
+                        }
                         .foregroundStyle(p.textSecondary)
+                    }
                 }
             }
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
-            .safeAreaInset(edge: .bottom) { ctaBar }
+            .safeAreaInset(edge: .bottom) {
+                switch step {
+                case .goal:        goalCTABar
+                case .defineSystem: systemCTABar
+                }
+            }
         }
         .preferredColorScheme(p.colorScheme)
         .tint(p.controlTint)
         .onAppear { draft.unit = currentUnit }
     }
 
-    // MARK: CTA
+    // MARK: Step 1 — Goal scroll content
 
-    private var ctaBar: some View {
+    private var goalScrollContent: some View {
+        let p = theme.palette
+        return ScrollView {
+            VStack(spacing: DesignTokens.Spacing.stackLarge) {
+                detailsCard
+                unitCard
+                valuesCard
+                colorCard
+                iconCard
+            }
+            .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
+            .padding(.top, DesignTokens.Spacing.pageTop)
+            .padding(.bottom, DesignTokens.Spacing.pageBottom)
+        }
+        .scrollIndicators(.hidden)
+        .livingCanvas(p)
+    }
+
+    private var goalCTABar: some View {
         let p = theme.palette
         return VStack(spacing: 0) {
             Rectangle().fill(p.hairline).frame(height: 0.5)
-            PrimaryActionButton(title: "Create Goal", enabled: titleValid, palette: p) {
-                commit()
+            PrimaryActionButton(title: "Next →", enabled: titleValid, palette: p) {
+                advanceToSystemPrompt()
             }
             .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
             .padding(.top, 12)
+            .padding(.bottom, 8)
+        }
+        .background(ctaBackground)
+    }
+
+    // MARK: Step 2 — Define Your System content
+
+    private var systemScrollContent: some View {
+        let p = theme.palette
+        return ScrollView {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.stackLarge) {
+                // Contextual prompt
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("What action will\nyou repeat?")
+                        .font(p.font(.display))
+                        .tracking(p.displayTracking)
+                        .foregroundStyle(p.textPrimary)
+
+                    Text("To achieve \"\(draft.title)\", you need a daily execution routine.")
+                        .font(p.font(.body))
+                        .foregroundStyle(p.textSecondary)
+                        .lineSpacing(3)
+                }
+
+                // Routine title input
+                ThemedCard(palette: p) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionLabel("Daily Action", palette: p)
+                        SheetTextField(
+                            placeholder: "e.g. Study for 30 minutes",
+                            text: $routineTitle,
+                            palette: p
+                        )
+                        .focused($routineFocused)
+                    }
+                    .padding(DesignTokens.Spacing.cardInset)
+                }
+
+                // Recurrence selector
+                recurrenceCard
+            }
+            .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
+            .padding(.top, DesignTokens.Spacing.pageTop)
+            .padding(.bottom, DesignTokens.Spacing.pageBottom)
+        }
+        .scrollIndicators(.hidden)
+        .livingCanvas(p)
+        .onAppear {
+            if routineTitle.isEmpty {
+                routineTitle = "Progress tracking for \(draft.title)"
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                routineFocused = true
+            }
+        }
+    }
+
+    private var recurrenceCard: some View {
+        let p = theme.palette
+        return ThemedCard(palette: p) {
+            VStack(alignment: .leading, spacing: 14) {
+                SectionLabel("Repeat", palette: p)
+
+                // Scheduling profiles
+                HStack(spacing: 8) {
+                    KineticPill(
+                        title: "Every Day",
+                        isSelected: isProfile(.daily),
+                        palette: p
+                    ) {
+                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .daily }
+                    }
+                    KineticPill(
+                        title: "Weekdays",
+                        isSelected: isProfile(.weekdays),
+                        palette: p
+                    ) {
+                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .weekdays }
+                    }
+                    KineticPill(
+                        title: "Weekends",
+                        isSelected: isProfile(.customDays([1, 7])),
+                        palette: p
+                    ) {
+                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .customDays([1, 7]) }
+                    }
+                }
+
+                // Single-letter day matrix (M T W T F S S)
+                HStack(spacing: 8) {
+                    ForEach(Self.weekdayChips, id: \.num) { chip in
+                        DayLetterPill(
+                            letter: chip.letter,
+                            isSelected: selectedWeekdays.contains(chip.num),
+                            palette: p
+                        ) {
+                            withAnimation(DesignTokens.Motion.snappy) { toggleWeekday(chip.num) }
+                        }
+                    }
+                }
+            }
+            .padding(DesignTokens.Spacing.cardInset)
+        }
+    }
+
+    // MARK: Recurrence ⇄ weekday-set bridging
+
+    /// The set of weekday numbers (1=Sun…7=Sat) currently active for the
+    /// selected recurrence rule. Drives the single-letter pill fills.
+    private var selectedWeekdays: Set<Int> {
+        switch routineRecurrence {
+        case .daily:                 return [1, 2, 3, 4, 5, 6, 7]
+        case .weekdays:              return [2, 3, 4, 5, 6]
+        case .weekly(let wd):        return wd.map { [$0] } ?? []
+        case .customDays(let days):  return days
+        }
+    }
+
+    /// Whether the live rule matches a named profile (compared by the set of
+    /// days it schedules, so a hand-built {1,7} reads as "Weekends" too).
+    private func isProfile(_ rule: RecurrenceRule) -> Bool {
+        daySet(for: routineRecurrence) == daySet(for: rule)
+    }
+
+    private func daySet(for rule: RecurrenceRule) -> Set<Int> {
+        switch rule {
+        case .daily:                 return [1, 2, 3, 4, 5, 6, 7]
+        case .weekdays:              return [2, 3, 4, 5, 6]
+        case .weekly(let wd):        return wd.map { [$0] } ?? []
+        case .customDays(let days):  return days
+        }
+    }
+
+    /// Toggle one weekday in the active set and re-derive the tightest rule:
+    /// all 7 → `.daily`, exactly Mon–Fri → `.weekdays`, a single day →
+    /// `.weekly`, anything else → `.customDays`.
+    private func toggleWeekday(_ num: Int) {
+        var days = selectedWeekdays
+        if days.contains(num) { days.remove(num) } else { days.insert(num) }
+
+        if days == [1, 2, 3, 4, 5, 6, 7] {
+            routineRecurrence = .daily
+        } else if days == [2, 3, 4, 5, 6] {
+            routineRecurrence = .weekdays
+        } else if days.count == 1, let only = days.first {
+            routineRecurrence = .weekly(weekday: only)
+        } else if days.isEmpty {
+            routineRecurrence = .customDays([])
+        } else {
+            routineRecurrence = .customDays(days)
+        }
+    }
+
+    private var systemCTABar: some View {
+        let p = theme.palette
+        return VStack(spacing: 8) {
+            Rectangle().fill(p.hairline).frame(height: 0.5)
+            PrimaryActionButton(title: "Confirm", enabled: !selectedWeekdays.isEmpty, palette: p) {
+                commitBoth()
+            }
+            .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
+            .padding(.top, 12)
+
+            Button("Skip routine setup") {
+                commitGoalOnly()
+            }
+            .font(p.font(.body))
+            .foregroundStyle(p.textTertiary)
             .padding(.bottom, 8)
         }
         .background(ctaBackground)
@@ -338,6 +583,62 @@ struct AddGoalSheet: View {
         } else {
             p.sheetBackground.ignoresSafeArea()
         }
+    }
+
+    // MARK: Commit helpers
+
+    private func advanceToSystemPrompt() {
+        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        draft.title = trimmed
+        draft.unit = currentUnit
+        draft.targetValue = parseValue(targetText)
+            ?? (unitMode == .preset ? selectedOption.defaultTarget : 10)
+        draft.currentValue = parseValue(currentText) ?? 0
+        AppHaptic.tap()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { step = .defineSystem }
+    }
+
+    private func commitGoalOnly() {
+        let goal = makeGoal()
+        modelContext.insert(goal)
+        try? modelContext.save()
+        AppHaptic.success()
+        dismiss()
+    }
+
+    private func commitBoth() {
+        let goal = makeGoal()
+        modelContext.insert(goal)
+
+        let title = routineTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let habit = PersistedHabit(
+            title: title.isEmpty ? "Daily progress" : title,
+            recurrence: routineRecurrence,
+            anchorGoalID: goal.id
+        )
+        modelContext.insert(habit)
+
+        // Single atomic save — both records or neither.
+        do {
+            try modelContext.save()
+        } catch {
+            // Fail-soft: SwiftData's autosave cycle will persist on next opportunity.
+        }
+        AppHaptic.success()
+        dismiss()
+    }
+
+    private func makeGoal() -> PersistedGoal {
+        PersistedGoal(
+            title: draft.title,
+            subtitle: draft.subtitle,
+            icon: draft.icon,
+            tint: draft.tint,
+            unit: draft.unit,
+            currentValue: max(draft.currentValue, 0),
+            targetValue: max(draft.targetValue, 1)
+        )
     }
 
     // MARK: Cards
@@ -543,21 +844,6 @@ struct AddGoalSheet: View {
         .accessibilityLabel(Text(name))
     }
 
-    // MARK: Commit
-
-    private func commit() {
-        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        draft.title = trimmed
-        draft.unit = currentUnit
-        draft.targetValue = parseValue(targetText)
-            ?? (unitMode == .preset ? selectedOption.defaultTarget : 10)
-        draft.currentValue = parseValue(currentText) ?? 0
-        onAdd(draft)
-        AppHaptic.success()
-        dismiss()
-    }
-
     /// Bulletproof string → Double. Strips any unit symbols, currency
     /// glyphs, or stray spaces the user may have typed, normalizes the
     /// decimal separator, and only then attempts the cast. Returns nil when
@@ -588,7 +874,7 @@ struct UpdateGoalSheet: View {
         let p = theme.palette
         NavigationStack {
             ZStack {
-                canvasLayer(p)
+                p.canvasView
 
                 ScrollView {
                     VStack(spacing: DesignTokens.Spacing.stack) {
@@ -632,17 +918,6 @@ struct UpdateGoalSheet: View {
         .tint(p.controlTint)
     }
 
-    @ViewBuilder
-    private func canvasLayer(_ p: ThemePalette) -> some View {
-        switch p.canvas {
-        case .solid(let c):
-            c.ignoresSafeArea()
-        case .gradient(let stops, let start, let end):
-            LinearGradient(stops: stops, startPoint: start, endPoint: end)
-                .ignoresSafeArea()
-        }
-    }
-
     private var headerCard: some View {
         let p = theme.palette
         return ThemedCard(palette: p) {
@@ -681,7 +956,7 @@ struct UpdateGoalSheet: View {
                     ZStack(alignment: .leading) {
                         Rectangle().fill(p.hairline)
                         Rectangle()
-                            .fill(goal.tint.opacity(0.85))
+                            .fill(goal.displayTint)
                             .frame(width: max(0, min(1, goal.progress)) * geo.size.width)
                     }
                 }

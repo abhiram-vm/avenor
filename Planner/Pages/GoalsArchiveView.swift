@@ -23,7 +23,7 @@ struct GoalsArchiveView: View {
         let p = theme.palette
         NavigationStack {
             ZStack {
-                canvasLayer(p)
+                p.canvasView
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -79,19 +79,6 @@ struct GoalsArchiveView: View {
                         .foregroundStyle(p.textPrimary)
                 }
             }
-        }
-    }
-
-    // MARK: Canvas
-
-    @ViewBuilder
-    private func canvasLayer(_ p: ThemePalette) -> some View {
-        switch p.canvas {
-        case .solid(let c):
-            c.ignoresSafeArea()
-        case .gradient(let stops, let start, let end):
-            LinearGradient(stops: stops, startPoint: start, endPoint: end)
-                .ignoresSafeArea()
         }
     }
 
@@ -217,7 +204,7 @@ struct AbandonedGoalRow: View {
             .font(p.font(.micro))
             .tracking(p.microTracking)
             .textCase(.uppercase)
-            .monospacedDigit()
+            .conditionalMonospaced(monospaced)
             .foregroundStyle(p.textTertiary)
             .lineLimit(1)
     }

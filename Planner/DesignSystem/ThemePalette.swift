@@ -253,6 +253,34 @@ extension View {
     }
 }
 
+extension ThemePalette {
+    /// Standalone full-bleed canvas layer (solid or gradient) for composing
+    /// the background as an explicit sibling at the base of a `ZStack`.
+    /// Mirrors the `themedCanvas` modifier — single source of truth for the
+    /// page backdrop across every tab.
+    @ViewBuilder
+    var canvasView: some View {
+        switch canvas {
+        case .solid(let color):
+            color.ignoresSafeArea()
+        case .gradient(let stops, let start, let end):
+            LinearGradient(stops: stops, startPoint: start, endPoint: end)
+                .ignoresSafeArea()
+        }
+    }
+}
+
+/// Hairline row divider shared by every list surface. Reads the active
+/// palette from the environment so it stays theme-correct without a param.
+struct RowSeparator: View {
+    @Environment(ThemeStore.self) private var theme
+    var body: some View {
+        Rectangle()
+            .fill(theme.palette.hairline)
+            .frame(height: 0.5)
+    }
+}
+
 /// Themed card. Switches between flat fills and `Material` based on the
 /// palette's `cardSurface`. The specular highlight is an additive top-edge
 /// stroke that only renders for `.material(_, specular: true)` — gives the

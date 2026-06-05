@@ -56,6 +56,10 @@ enum RecurrenceRule: Equatable, Hashable {
     case weekly(weekday: Int?)
     /// "every weekday" — Monday through Friday.
     case weekdays
+    /// An explicit set of weekdays (1=Sun…7=Sat). Backs the multi-day
+    /// selection matrix (e.g. weekend = {1,7}, or any custom Mon/Wed/Fri
+    /// combination). Empty set is treated as "no schedule".
+    case customDays(Set<Int>)
 
     /// Human-facing label for chips and row meta strips.
     var label: String {
@@ -65,6 +69,11 @@ enum RecurrenceRule: Equatable, Hashable {
         case .weekly(let wd):
             guard let wd, let name = Self.weekdayName(wd) else { return "Weekly" }
             return "Every \(name)"
+        case .customDays(let days):
+            if days == [1, 7] { return "Weekends" }
+            let ordered = [2, 3, 4, 5, 6, 7, 1].filter { days.contains($0) }
+            let abbrev = ordered.compactMap { Self.weekdayAbbrev($0) }
+            return abbrev.isEmpty ? "Custom" : abbrev.joined(separator: " · ")
         }
     }
 
@@ -74,6 +83,8 @@ enum RecurrenceRule: Equatable, Hashable {
         case .daily:    return "daily"
         case .weekdays: return "weekdays"
         case .weekly(let wd): return wd.map { "weekly:\($0)" } ?? "weekly"
+        case .customDays(let days):
+            return "days:" + days.sorted().map(String.init).joined(separator: ",")
         }
     }
 
@@ -83,9 +94,19 @@ enum RecurrenceRule: Equatable, Hashable {
         case "weekdays": self = .weekdays
         case "weekly":   self = .weekly(weekday: nil)
         default:
-            guard rawToken.hasPrefix("weekly:"),
-                  let wd = Int(rawToken.dropFirst("weekly:".count)) else { return nil }
-            self = .weekly(weekday: wd)
+            if rawToken.hasPrefix("weekly:"),
+               let wd = Int(rawToken.dropFirst("weekly:".count)) {
+                self = .weekly(weekday: wd)
+            } else if rawToken.hasPrefix("days:") {
+                let nums = rawToken.dropFirst("days:".count)
+                    .split(separator: ",")
+                    .compactMap { Int($0) }
+                    .filter { (1...7).contains($0) }
+                guard !nums.isEmpty else { return nil }
+                self = .customDays(Set(nums))
+            } else {
+                return nil
+            }
         }
     }
 
@@ -95,6 +116,15 @@ enum RecurrenceRule: Equatable, Hashable {
         case 3: return "Tuesday";   case 4: return "Wednesday"
         case 5: return "Thursday";  case 6: return "Friday"
         case 7: return "Saturday";  default: return nil
+        }
+    }
+
+    static func weekdayAbbrev(_ wd: Int) -> String? {
+        switch wd {
+        case 1: return "Sun";   case 2: return "Mon"
+        case 3: return "Tue";   case 4: return "Wed"
+        case 5: return "Thu";   case 6: return "Fri"
+        case 7: return "Sat";   default: return nil
         }
     }
 }

@@ -31,6 +31,11 @@ struct PlannerApp: App {
                     // made from the interactive widget while the app was
                     // closed.
                     ConflictResolver.reconcile(in: context)
+                    // One-time "Convert & Retire" bridge: mint a habit per
+                    // active legacy goal, then flip the goal to `.converted`.
+                    // Runs on the main-actor environment context (the
+                    // container's mainContext) to avoid cross-thread access.
+                    GoalConversionMigration.runIfNeeded(in: context)
                     LifecycleAutomation.runDailyMaintenance(in: context)
                     WidgetActionApplier.drainAndApply(in: context)
                 }

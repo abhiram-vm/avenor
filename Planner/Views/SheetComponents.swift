@@ -198,6 +198,43 @@ struct KineticPill: View {
     }
 }
 
+// MARK: - DayLetterPill
+//
+// Compact circular day token for the multi-day selection matrix. Renders the
+// absolute first letter of a weekday; the active state fills with
+// `palette.accent` and inverts the glyph for contrast. Equal-width via an
+// expanding frame so a row of seven reads as a clean grid.
+
+struct DayLetterPill: View {
+    let letter: String
+    let isSelected: Bool
+    let palette: ThemePalette
+    let action: () -> Void
+
+    var body: some View {
+        Button {
+            AppHaptic.pop()
+            action()
+        } label: {
+            Text(letter)
+                .font(.system(size: 13, weight: .bold, design: palette.fontDesign))
+                .foregroundStyle(isSelected ? palette.rowFill : palette.textTertiary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 38)
+                .background(
+                    Circle().fill(isSelected ? palette.accent : palette.chromeSurface)
+                )
+                .overlay(
+                    Circle().strokeBorder(isSelected ? Color.clear : palette.hairline, lineWidth: 0.5)
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(KineticButtonStyle())
+        .accessibilityLabel(letter)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
 // MARK: - InlineDateDrawer
 
 /// A collapsible date/time disclosure. A toggle arms the deadline; once

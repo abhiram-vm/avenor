@@ -13,6 +13,7 @@ struct TasksTabView: View {
     @Query(sort: \PersistedTask.sortOrder) private var tasks: [PersistedTask]
 
     @State private var selectedFilter: TaskType? = nil
+    @State private var sortMode: TaskSortMode = .chronological
     @State private var expandedTaskID: UUID? = nil
     @State private var showingNewItemSheet = false
     @State private var showingArchive = false
@@ -28,7 +29,7 @@ struct TasksTabView: View {
         let p = theme.palette
         NavigationStack {
             ZStack {
-                canvasLayer(p)
+                p.canvasView
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
@@ -47,18 +48,18 @@ struct TasksTabView: View {
                                 .padding(.top, 24)
                                 .padding(.bottom, DesignTokens.Spacing.pageBottom)
                         } else {
-                            rowSeparator
+                            RowSeparator()
                             ForEach(liveTasks) { task in
                                 taskSwipeRow(for: task)
-                                rowSeparator
+                                RowSeparator()
                             }
 
                             if !marinatingIdeas.isEmpty {
                                 marinatingHeader
-                                rowSeparator
+                                RowSeparator()
                                 ForEach(marinatingIdeas) { task in
                                     taskSwipeRow(for: task)
-                                    rowSeparator
+                                    RowSeparator()
                                 }
                             }
 
@@ -121,7 +122,7 @@ struct TasksTabView: View {
         StarkSwipeRow(
             leading: StarkSwipeAction(
                 systemImage: "checkmark",
-                label: completionLabel(for: task),
+                label: task.completionVerb,
                 perform: { complete(task) }
             ),
             trailing: StarkSwipeAction(
@@ -141,19 +142,6 @@ struct TasksTabView: View {
             insertion: .opacity.combined(with: .move(edge: .top)),
             removal: .opacity
         ))
-    }
-
-    // MARK: Canvas layer (palette-aware)
-
-    @ViewBuilder
-    private func canvasLayer(_ p: ThemePalette) -> some View {
-        switch p.canvas {
-        case .solid(let c):
-            c.ignoresSafeArea()
-        case .gradient(let stops, let start, let end):
-            LinearGradient(stops: stops, startPoint: start, endPoint: end)
-                .ignoresSafeArea()
-        }
     }
 
     /// Tracked uppercase divider that announces the marinating sub-section.
@@ -194,12 +182,6 @@ struct TasksTabView: View {
 
     // MARK: Row separator (between rows)
 
-    private var rowSeparator: some View {
-        Rectangle()
-            .fill(theme.palette.hairline)
-            .frame(height: 0.5)
-    }
-
     // MARK: Archive button — tracked uppercase pill, hairline border
 
     private var archiveButton: some View {
@@ -208,10 +190,8 @@ struct TasksTabView: View {
             showingArchive = true
             AppHaptic.tap()
         } label: {
-            Text("Archive")
-                .font(p.font(.micro))
-                .tracking(p.microTracking)
-                .textCase(.uppercase)
+            Image(systemName: "archivebox")
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(p.textPrimary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
@@ -264,6 +244,36 @@ struct TasksTabView: View {
             }
 
             Spacer()
+
+            Menu {
+                ForEach(TaskSortMode.allCases) { mode in
+                    Button {
+                        AppHaptic.tap()
+                        sortMode = mode
+                    } label: {
+                        Label(mode.displayName, systemImage: mode.glyph)
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(sortMode.displayName)
+                        .font(p.font(.micro))
+                        .tracking(p.microTracking)
+                        .textCase(.uppercase)
+                    Image(systemName: "arrow.up.arrow.down")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(p.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule().fill(p.chromeSurface)
+                )
+                .overlay(
+                    Capsule().strokeBorder(p.hairline, lineWidth: 0.5)
+                )
+            }
+            .buttonStyle(.plain)
 
             Menu {
                 Button("All") { selectedFilter = nil }
@@ -330,10 +340,13 @@ struct TasksTabView: View {
         }
     }
 
-    /// Fresh items only: anything that isn't a stale `.idea`. Preserves
-    /// the order returned by `filteredTasks` (which respects sortOrder).
+    /// Fresh items only: anything that isn't a stale `.idea`. Reordered by
+    /// the active `sortMode` (chronological by due date, or hierarchical by
+    /// priority). Marinating ideas keep their own oldest-first ordering.
     private var liveTasks: [PersistedTask] {
-        filteredTasks.filter { !LifecycleAutomation.isIdeaStale($0) }
+        filteredTasks
+            .filter { !LifecycleAutomation.isIdeaStale($0) }
+            .sorted(by: sortMode)
     }
 
     /// Stale ideas sorted oldest-first so the deepest-in-marination floats
@@ -368,14 +381,6 @@ struct TasksTabView: View {
         TaskMutator.complete(task, in: modelContext, with: exitSpring)
     }
 
-    private func completionLabel(for task: PersistedTask) -> String {
-        switch task.type {
-        case .todo: return "Done"
-        case .reminder: return "Ack"
-        case .idea: return "Shipped"
-        }
-    }
-
     private func insert(from draft: NewTaskDraft) {
         let task = PersistedTask(
             title: draft.title,
@@ -401,7 +406,7 @@ struct TasksTabView: View {
 //
 // Default welcome: Option B (hyper-minimal) — locked.
 //   "Welcome."
-//   "A faster way to think."
+//   "Capture fast. Decide later."
 
 struct TodayHeader: View {
     @Environment(ThemeStore.self) private var theme
@@ -425,7 +430,7 @@ struct TodayHeader: View {
                 .tracking(p.displayTracking)
                 .foregroundStyle(p.textPrimary)
 
-            Text("A faster way to think.")
+            Text("Capture fast. Decide later.")
                 .font(p.font(.body))
                 .foregroundStyle(p.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

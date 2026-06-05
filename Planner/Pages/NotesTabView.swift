@@ -21,7 +21,7 @@ struct NotesTabView: View {
         let p = theme.palette
         NavigationStack {
             ZStack {
-                canvasLayer(p)
+                p.canvasView
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -36,7 +36,7 @@ struct NotesTabView: View {
                                 .padding(.top, 24)
                                 .padding(.bottom, DesignTokens.Spacing.pageBottom)
                         } else {
-                            rowSeparator
+                            RowSeparator()
                             ForEach(visibleNotes) { note in
                                 StarkSwipeRow(
                                     leading: StarkSwipeAction(
@@ -61,7 +61,7 @@ struct NotesTabView: View {
                                     insertion: .opacity.combined(with: .move(edge: .top)),
                                     removal: .opacity
                                 ))
-                                rowSeparator
+                                RowSeparator()
                             }
                             Spacer(minLength: DesignTokens.Spacing.pageBottom)
                         }
@@ -84,19 +84,6 @@ struct NotesTabView: View {
         )
     }
 
-    // MARK: Canvas
-
-    @ViewBuilder
-    private func canvasLayer(_ p: ThemePalette) -> some View {
-        switch p.canvas {
-        case .solid(let c):
-            c.ignoresSafeArea()
-        case .gradient(let stops, let start, let end):
-            LinearGradient(stops: stops, startPoint: start, endPoint: end)
-                .ignoresSafeArea()
-        }
-    }
-
     // MARK: Header
 
     private var header: some View {
@@ -114,12 +101,6 @@ struct NotesTabView: View {
                 .monospacedDigit()
                 .foregroundStyle(p.textSecondary)
         }
-    }
-
-    private var rowSeparator: some View {
-        Rectangle()
-            .fill(theme.palette.hairline)
-            .frame(height: 0.5)
     }
 
     // MARK: Plus
