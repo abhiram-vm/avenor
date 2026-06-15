@@ -55,6 +55,9 @@ struct ContentView: View {
 
         // Translucent toolbar chrome tinted to the active palette's color
         // scheme so labels read correctly across light/dark themes.
+        // iOS-only: `.tabBar` / `.navigationBar` toolbar placements don't
+        // exist on macOS (the Mac build uses Mac_ContentView's sidebar).
+        #if os(iOS)
         .toolbarBackground(.ultraThinMaterial, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
         .toolbarColorScheme(p.colorScheme, for: .tabBar)
@@ -62,6 +65,7 @@ struct ContentView: View {
         .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+        #endif
 
         // Honor the palette's color scheme so system widgets (search bars,
         // pickers, etc.) match the active theme.

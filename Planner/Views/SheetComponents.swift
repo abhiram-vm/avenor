@@ -3,6 +3,57 @@ import SwiftUI
 import UIKit
 #endif
 
+// MARK: - Cross-platform compatibility shims (macOS)
+//
+// `StarkCaptureBar`, the creation sheets, and several rows reference a handful
+// of iOS-only input + chrome types. These shims let the shared call sites
+// compile unchanged on macOS, where the real types don't exist. The actual
+// iOS-only view modifiers that consume them are always wrapped in `#if os(iOS)`.
+
+#if !os(iOS)
+/// Mirror of SwiftUI's iOS-only `TextInputAutocapitalization` so shared call
+/// sites (`.never`, `.sentences`, `.words`, `.characters`) type-check on macOS.
+/// Never read — the `.textInputAutocapitalization` modifier is iOS-gated.
+enum TextInputAutocapitalization { case never, words, sentences, characters }
+
+/// Mirror of UIKit's iOS-only `UIKeyboardType` for the same reason.
+enum UIKeyboardType { case `default`, numberPad, decimalPad }
+#endif
+
+// MARK: - Cross-platform toolbar + navigation helpers
+
+extension ToolbarItemPlacement {
+    /// `.topBarLeading` on iOS; `.automatic` on macOS (no navigation bar).
+    static var avenorLeading: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .automatic
+        #endif
+    }
+    /// `.topBarTrailing` on iOS; `.automatic` on macOS.
+    static var avenorTrailing: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarTrailing
+        #else
+        .automatic
+        #endif
+    }
+}
+
+extension View {
+    /// `.navigationBarTitleDisplayMode(.inline)` on iOS; a no-op on macOS,
+    /// where `NavigationSplitView` owns title presentation.
+    @ViewBuilder
+    func avenorInlineNavTitle() -> some View {
+        #if os(iOS)
+        navigationBarTitleDisplayMode(.inline)
+        #else
+        self
+        #endif
+    }
+}
+
 // MARK: - SheetComponents
 //
 // Shared editorial primitives for the Phase-4 creation sheets (Add Task /
@@ -128,8 +179,10 @@ struct SheetTextField: View {
                 TextField(placeholder, text: $text)
             }
         }
+        #if os(iOS)
         .textInputAutocapitalization(autocapitalization)
         .keyboardType(keyboard)
+        #endif
         .font(monospaced
               ? .system(size: 15, weight: .regular, design: .monospaced)
               : palette.font(.body))

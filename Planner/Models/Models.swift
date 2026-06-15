@@ -81,6 +81,7 @@ struct ThemeTokens {
                 scheme: .dark
             )
         case .light, .calmEarth:
+            #if os(iOS)
             return .init(
                 bg: Color(.systemBackground), panel: Color(.secondarySystemBackground),
                 stroke: Color.black.opacity(0.12),
@@ -88,6 +89,18 @@ struct ThemeTokens {
                 field: Color(.secondarySystemBackground), fieldStroke: Color.black.opacity(0.10),
                 scheme: .light
             )
+            #else
+            // AppKit semantic equivalents of the iOS dynamic colors. This legacy
+            // token bundle only feeds the largely-dead CommonViews path; modern
+            // surfaces read `ThemePalette`, so exact parity isn't required.
+            return .init(
+                bg: Color(nsColor: .windowBackgroundColor), panel: Color(nsColor: .underPageBackgroundColor),
+                stroke: Color.black.opacity(0.12),
+                text: Color(nsColor: .labelColor), text2: Color(nsColor: .secondaryLabelColor), text3: Color(nsColor: .tertiaryLabelColor),
+                field: Color(nsColor: .underPageBackgroundColor), fieldStroke: Color.black.opacity(0.10),
+                scheme: .light
+            )
+            #endif
         }
     }
 }

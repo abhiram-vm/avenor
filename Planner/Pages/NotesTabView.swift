@@ -72,16 +72,20 @@ struct NotesTabView: View {
                 .animation(spring, value: expandedNoteID)
             }
             .navigationTitle("Notes")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { plusButton }
+                ToolbarItem(placement: .avenorTrailing) { plusButton }
             }
         }
+        #if os(iOS)
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: "Search notes"
         )
+        #else
+        .searchable(text: $searchText, prompt: "Search notes")
+        #endif
     }
 
     // MARK: Header

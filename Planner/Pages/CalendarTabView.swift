@@ -43,7 +43,7 @@ struct CalendarTabView: View {
                 .scrollIndicators(.hidden)
             }
             .navigationTitle("Calendar")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .task(id: selectedDay) {
                 await loadEvents(for: selectedDay)
             }

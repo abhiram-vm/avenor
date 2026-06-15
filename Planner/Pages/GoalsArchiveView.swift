@@ -69,9 +69,9 @@ struct GoalsArchiveView: View {
                 .animation(spring, value: abandoned.map(\.id))
             }
             .navigationTitle("Goals Archive")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .avenorTrailing) {
                     Button("Close") { dismiss() }
                         .font(p.font(.micro))
                         .tracking(p.microTracking)

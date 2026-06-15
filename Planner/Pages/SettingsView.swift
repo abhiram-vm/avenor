@@ -61,9 +61,9 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
             .themedCanvas(palette)
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .avenorTrailing) {
                     Button("Close") { dismiss() }
                         .font(palette.font(.micro))
                         .tracking(palette.microTracking)
@@ -110,7 +110,9 @@ struct SettingsView: View {
                     .tracking(p.headlineTracking)
                     .tint(p.accent)
                     .foregroundStyle(p.textPrimary)
+                    #if os(iOS)
                     .textInputAutocapitalization(.words)
+                    #endif
                     .autocorrectionDisabled()
 
                     Text("Local profile · no account required")
@@ -691,7 +693,7 @@ struct ThemedDetailScaffold<Content: View>: View {
         .scrollIndicators(.hidden)
         .themedCanvas(p)
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+        .avenorInlineNavTitle()
         .preferredColorScheme(p.colorScheme)
     }
 }

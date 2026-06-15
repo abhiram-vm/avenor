@@ -95,6 +95,8 @@ struct CalendarEventCard: View {
         // calshow: takes seconds since the reference date (2001-01-01).
         let seconds = Int(event.startDate.timeIntervalSinceReferenceDate)
         guard let url = URL(string: "calshow:\(seconds)") else { return }
+        #if os(iOS)
         UIApplication.shared.open(url)
+        #endif
     }
 }

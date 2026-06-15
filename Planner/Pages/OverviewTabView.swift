@@ -78,8 +78,10 @@ struct OverviewTabView: View {
                 .animation(spring, value: expandedTaskID)
             }
             .navigationTitle("Overview")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
+            #if os(iOS)
             .toolbar(.hidden, for: .navigationBar)
+            #endif
         }
     }
 

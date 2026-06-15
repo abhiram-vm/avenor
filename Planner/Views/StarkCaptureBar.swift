@@ -152,7 +152,9 @@ struct StarkCaptureBar: View {
                             : Color.clear          // highlight layer takes over
                     )
                     .tint(p.textPrimary)            // cursor stays visible
+                    #if os(iOS)
                     .textInputAutocapitalization(.sentences)
+                    #endif
                     .autocorrectionDisabled()
                     .submitLabel(.return)
                     .onSubmit(submit)

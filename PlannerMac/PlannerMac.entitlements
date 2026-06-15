@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- macOS apps are sandboxed by default on the App Store. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Outbound network access for CloudKit / notifications. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Siri / App Intents (AvenorIntents + AvenorShortcuts are in the Mac target). -->
+	<key>com.apple.developer.siri</key>
+	<true/>
+	<!-- CloudKit, ready for cross-device sync. NOTE: sync is NOT yet active —
+	     the iOS target currently has no iCloud entitlement and both
+	     ModelContainers use the default (non-CloudKit) store. To turn sync on,
+	     add the matching entitlement on iOS, provision this container in the
+	     Developer portal, and switch both ModelContainers to a CloudKit-backed
+	     ModelConfiguration. -->
+	<key>com.apple.developer.icloud-services</key>
+	<array>
+		<string>CloudKit</string>
+	</array>
+	<key>com.apple.developer.icloud-container-identifiers</key>
+	<array>
+		<string>iCloud.com.avenor.planner</string>
+	</array>
+</dict>
+</plist>

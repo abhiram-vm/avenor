@@ -54,20 +54,23 @@ struct GoalsTabView: View {
             .animation(spring, value: habits.filter { !$0.isArchived }.map(\.id))
             .livingCanvas(p)
             .navigationTitle("Goals")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { archiveButton }
-                ToolbarItem(placement: .topBarTrailing) { plusButton }
+                ToolbarItem(placement: .avenorLeading) { archiveButton }
+                ToolbarItem(placement: .avenorTrailing) { plusButton }
             }
             .sheet(isPresented: $isPresentingArchive) {
                 GoalsArchiveView()
+                    #if os(iOS)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(p.sheetBackground)
                     .presentationCornerRadius(DesignTokens.Radius.sheet)
+                    #endif
             }
             .sheet(isPresented: $isPresentingAdd) {
                 AddGoalSheet()
+                    #if os(iOS)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(
@@ -76,6 +79,7 @@ struct GoalsTabView: View {
                             : AnyShapeStyle(p.sheetBackground)
                     )
                     .presentationCornerRadius(DesignTokens.Radius.sheet)
+                    #endif
             }
             .sheet(item: Binding(
                 get: { selectedGoalID.map(IdentifiedID.init) },
@@ -83,18 +87,22 @@ struct GoalsTabView: View {
             )) { id in
                 if let goal = goals.first(where: { $0.id == id.id }) {
                     UpdateGoalSheet(goal: goal)
+                        #if os(iOS)
                         .presentationDetents([.medium, .large])
                         .presentationDragIndicator(.visible)
                         .presentationBackground(DesignTokens.Background.canvas)
                         .presentationCornerRadius(DesignTokens.Radius.sheet)
+                        #endif
                 }
             }
             .sheet(item: $rekindleHabit) { habit in
                 RekindleStreakSheet(habit: habit)
+                    #if os(iOS)
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(p.sheetBackground)
                     .presentationCornerRadius(DesignTokens.Radius.sheet)
+                    #endif
             }
         }
         .onChange(of: goals.map(\.currentValue)) { _, _ in

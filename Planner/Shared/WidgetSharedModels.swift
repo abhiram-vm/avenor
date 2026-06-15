@@ -1,6 +1,8 @@
 import Foundation
 import SwiftUI
+#if os(iOS)
 import ActivityKit
+#endif
 
 // MARK: - WidgetSharedModels
 //
@@ -324,7 +326,11 @@ public extension WidgetSnapshotIO {
 // Shared between the main app (which starts/updates/ends the activity via
 // `EventLiveActivityManager`) and the widget extension (which renders the
 // lock-screen + Dynamic Island UI). MUST be a member of BOTH targets.
+//
+// iOS-only: ActivityKit is unavailable on macOS, so this type compiles out of
+// the Mac target. No macOS code path references it.
 
+#if os(iOS)
 public struct EventCountdownAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
         /// The wall-clock moment the event begins. Drives the native
@@ -350,6 +356,7 @@ public struct EventCountdownAttributes: ActivityAttributes {
         self.accentHex = accentHex
     }
 }
+#endif
 
 // MARK: - Shared JSON coders (exposed for queue + payload IO)
 

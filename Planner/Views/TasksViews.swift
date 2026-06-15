@@ -176,7 +176,9 @@ struct TaskRow: View {
                 .font(p.font(.headline))
                 .tracking(p.headlineTracking)
                 .foregroundStyle(p.textPrimary)
+                #if os(iOS)
                 .textInputAutocapitalization(.sentences)
+                #endif
                 .strikethrough(task.type == .todo && (task.isDone ?? false), color: p.textTertiary)
 
             Spacer(minLength: 0)
@@ -362,7 +364,9 @@ struct TaskRow: View {
                 get: { task.ideaTag ?? "" },
                 set: { task.ideaTag = String($0.prefix(10)).isEmpty ? nil : String($0.prefix(10)) }
             ))
+            #if os(iOS)
             .textInputAutocapitalization(.characters)
+            #endif
             .autocorrectionDisabled()
             .foregroundStyle(p.textPrimary)
             .font(p.font(.body))
@@ -478,14 +482,16 @@ struct NewItemSheet: View {
             .scrollIndicators(.hidden)
             .livingCanvas(p)
             .navigationTitle("New \(type.displayName.capitalized)")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .avenorLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(p.textSecondary)
                 }
             }
+            #if os(iOS)
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+            #endif
             .safeAreaInset(edge: .bottom) { ctaBar }
         }
         .preferredColorScheme(p.colorScheme)
