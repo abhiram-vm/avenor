@@ -57,12 +57,21 @@ enum WidgetActionApplier {
         guard didMutate else { return }
         do {
             try context.save()
-            republish(in: context)
             logger.debug("Applied \(uniqueActions.count, privacy: .public) widget action(s).")
         } catch {
             // Never crash the host app on a save failure — the worst case is
             // the optimistic widget overlay reconciles on the next publish.
             logger.error("Widget action save failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        // Republish is two full-table fetches + two WidgetCenter calls.
+        // Moving it off the synchronous launch path means the save above
+        // returns immediately; the widget snapshots are refreshed on the
+        // next main-actor turn at utility priority instead of blocking launch.
+        // Task (non-detached) is used rather than Task.detached because
+        // ModelContext is not Sendable and must stay on the main actor.
+        Task(priority: .utility) { @MainActor in
+            WidgetActionApplier.republish(in: context)
         }
     }
 

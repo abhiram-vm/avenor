@@ -24,6 +24,7 @@ struct GoalsTabView: View {
     @State private var isPresentingAdd: Bool = false
     @State private var isPresentingArchive: Bool = false
     @State private var selectedGoalID: UUID? = nil
+    @State private var rekindleHabit: PersistedHabit?
 
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.7)
     private let exitSpring = Animation.spring(duration: 0.25)
@@ -87,6 +88,13 @@ struct GoalsTabView: View {
                         .presentationBackground(DesignTokens.Background.canvas)
                         .presentationCornerRadius(DesignTokens.Radius.sheet)
                 }
+            }
+            .sheet(item: $rekindleHabit) { habit in
+                RekindleStreakSheet(habit: habit)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(p.sheetBackground)
+                    .presentationCornerRadius(DesignTokens.Radius.sheet)
             }
         }
         .onChange(of: goals.map(\.currentValue)) { _, _ in
@@ -207,9 +215,15 @@ struct GoalsTabView: View {
         RowSeparator()
         ForEach(standaloneRoutines) { habit in
             HabitSwipeRow(onArchive: { archiveHabit(habit) }) {
-                HabitCardRow(habit: habit) {
-                    withAnimation(exitSpring) { habit.toggleToday() }
-                }
+                HabitCardRow(
+                    habit: habit,
+                    isEligible: habit.isCompletedToday() || habit.isEligibleForCompletion(on: .now),
+                    onComplete: {
+                        guard habit.isCompletedToday() || habit.isEligibleForCompletion(on: .now) else { return }
+                        withAnimation(exitSpring) { habit.toggleToday() }
+                    },
+                    onRekindle: { rekindleHabit = habit }
+                )
                 .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
                 .padding(.vertical, 6)
                 .contextMenu {
@@ -352,7 +366,7 @@ private struct LinkedRoutineRow: View {
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(p.accent.opacity(0.65))
 
-                        Text("Routine · \(habit.cadenceLabel.uppercased())")
+                        Text("Routine · \(habit.cadenceDisplayLabel.uppercased())")
                             .font(p.font(.micro))
                             .tracking(p.microTracking)
                             .textCase(.uppercase)

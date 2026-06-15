@@ -125,7 +125,7 @@ enum WidgetSnapshotPublisher {
             HabitWidgetItem(
                 id: h.id,
                 title: h.title,
-                cadenceLabel: h.cadenceLabel,
+                cadenceLabel: h.cadenceDisplayLabel,
                 streakCount: h.streakCount,
                 isCompletedToday: h.isCompletedToday(calendar: calendar),
                 tintHex: "#FFFFFFFF"

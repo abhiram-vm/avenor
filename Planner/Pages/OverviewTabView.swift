@@ -25,6 +25,9 @@ struct OverviewTabView: View {
     @Query(sort: \PersistedGoal.sortOrder) private var goals: [PersistedGoal]
     @Query(sort: \PersistedHabit.sortOrder) private var habits: [PersistedHabit]
 
+    /// External focus trigger from `ContentView` (Action Button, URL scheme, Spotlight).
+    var shouldFocusCapture: Binding<Bool> = .constant(false)
+
     @State private var expandedTaskID: UUID? = nil
     @State private var isPresentingSettings: Bool = false
     /// The day currently selected in the 7-day heatmap. Defaults to today.
@@ -83,7 +86,7 @@ struct OverviewTabView: View {
     // MARK: Capture bar
 
     private var captureBar: some View {
-        StarkCaptureBar(onSubmit: commitCapture)
+        StarkCaptureBar(onSubmit: commitCapture, shouldFocus: shouldFocusCapture)
     }
 
     /// Routes free-form text through `CaptureParser` and inserts the
@@ -126,6 +129,16 @@ struct OverviewTabView: View {
                 )
                 modelContext.insert(task)
 
+            case .reminder(let title, let dueDate, let priority):
+                let task = PersistedTask(
+                    title: title,
+                    type: .reminder,
+                    dueDate: dueDate,
+                    priority: priority
+                )
+                modelContext.insert(task)
+                NotificationManager.shared.schedule(for: task)
+
             case .note(let title, let body):
                 let note = PersistedNote(title: title, details: body, lastEditedAt: .now)
                 modelContext.insert(note)
@@ -147,6 +160,10 @@ struct OverviewTabView: View {
         // habits surface in their @Query-backed feeds without waiting for
         // the autosave coalescing window.
         try? modelContext.save()
+
+        // Signal the system that capture is a frequent action so Siri
+        // Suggestions / Spotlight rank the Avenor shortcuts higher.
+        IntentDonations.donateAddTask()
     }
 
     // MARK: Header
@@ -441,23 +458,14 @@ struct OverviewTabView: View {
             return DayHeatState(scheduledCount: 0, completedCount: 0)
         }
 
-        let weekday = cal.component(.weekday, from: dayStart)   // 1=Sun, 2=Mon…7=Sat
-        let isWeekday = weekday >= 2 && weekday <= 6
-
         // Active, non-archived routines
         let activeHabits = habits.filter { !$0.isArchived }
 
-        // Which routines are scheduled for this specific day?
+        // Which routines are scheduled for this specific day? Routed through
+        // the model's `isScheduledDay` so cadence semantics (including the
+        // template-only bi-weekly / monthly rules) live in exactly one place.
         let scheduled = activeHabits.filter { habit in
-            switch habit.recurrence {
-            case .daily:             return true
-            case .weekdays:          return isWeekday
-            case .weekly(let wd):
-                guard let wd else { return false }
-                return wd == weekday
-            case .customDays(let days):
-                return days.contains(weekday)
-            }
+            habit.isScheduledDay(dayStart, calendar: cal)
         }
 
         // Infer completion from streak window (same logic as WeekDotChain).

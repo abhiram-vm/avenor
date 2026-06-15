@@ -125,6 +125,10 @@ enum DesignTokens {
         static let snappy = Animation.spring(response: 0.26, dampingFraction: 0.88)
         /// Smooth — row expansions, sheet transitions.
         static let smooth = Animation.spring(response: 0.34, dampingFraction: 0.80)
+        /// Overshooting spring — the design system's
+        /// cubic-bezier(0.34, 1.56, 0.64, 1) "spring feel". Reserved for
+        /// state changes that should visibly pop (template → chip apply).
+        static let springy = Animation.spring(response: 0.38, dampingFraction: 0.66)
     }
 
     // MARK: Background

@@ -31,6 +31,10 @@ enum TaskMutator {
 
         // schedule() no-ops for completed tasks → effectively a cancel.
         NotificationManager.shared.schedule(for: task)
+
+        // Signal the system that capture is a frequent action so Siri
+        // Suggestions / Spotlight rank the Avenor shortcuts higher.
+        IntentDonations.donateAddTask()
     }
 
     static func uncomplete(_ task: PersistedTask, in context: ModelContext, with animation: Animation? = nil) {

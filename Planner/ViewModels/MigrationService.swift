@@ -36,23 +36,31 @@ enum MigrationService {
             return
         }
 
-        guard let payload = LegacyJSONStore.load() else {
-            // No legacy file — fresh install. Mark complete so we don't keep
-            // hitting the disk on every launch.
-            defaults.set(true, forKey: migrationFlagKey)
-            return
-        }
-
-        do {
-            try migrate(payload: payload, into: context)
-            try context.save()
-            LegacyJSONStore.archive()
-            defaults.set(true, forKey: migrationFlagKey)
-        } catch {
-            // Swallow: leave the JSON, leave the flag unset, retry next launch.
-            // SwiftData inserts in this scope are not persisted because we
-            // don't call save() before the throw.
-            logger.error("Migration failed: \(error.localizedDescription, privacy: .public)")
+        // Disk read and JSON decode run in a detached utility task so they
+        // don't block the main actor during launch. `payload` is a pure
+        // Sendable value type; it crosses the task boundary safely. The
+        // ModelContext is only accessed inside the MainActor.run block that
+        // follows, which executes on the same main-actor executor as the
+        // caller — no cross-actor context access occurs.
+        Task.detached(priority: .utility) {
+            let payload = LegacyJSONStore.load()
+            await MainActor.run {
+                guard let payload else {
+                    // No legacy file — fresh install or already migrated.
+                    // Mark complete so we don't keep hitting the disk.
+                    defaults.set(true, forKey: Self.migrationFlagKey)
+                    return
+                }
+                do {
+                    try Self.migrate(payload: payload, into: context)
+                    try context.save()
+                    LegacyJSONStore.archive()
+                    defaults.set(true, forKey: Self.migrationFlagKey)
+                } catch {
+                    // Leave the JSON and flag unset — retry next launch.
+                    Self.logger.error("Migration failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
         }
     }
 

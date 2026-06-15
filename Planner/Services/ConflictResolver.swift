@@ -40,7 +40,9 @@ enum ConflictResolver {
     // MARK: Tasks
 
     private static func reconcileTasks(in context: ModelContext) throws {
-        let all = try context.fetch(FetchDescriptor<PersistedTask>())
+        var descriptor = FetchDescriptor<PersistedTask>()
+        descriptor.fetchLimit = 500
+        let all = try context.fetch(descriptor)
         let groups = Dictionary(grouping: all, by: { $0.id })
         var pruned = 0
         for (_, group) in groups where group.count > 1 {
@@ -56,7 +58,9 @@ enum ConflictResolver {
     // MARK: Notes
 
     private static func reconcileNotes(in context: ModelContext) throws {
-        let all = try context.fetch(FetchDescriptor<PersistedNote>())
+        var descriptor = FetchDescriptor<PersistedNote>()
+        descriptor.fetchLimit = 500
+        let all = try context.fetch(descriptor)
         let groups = Dictionary(grouping: all, by: { $0.id })
         var pruned = 0
         for (_, group) in groups where group.count > 1 {
@@ -75,7 +79,9 @@ enum ConflictResolver {
     // MARK: Goals
 
     private static func reconcileGoals(in context: ModelContext) throws {
-        let all = try context.fetch(FetchDescriptor<PersistedGoal>())
+        var descriptor = FetchDescriptor<PersistedGoal>()
+        descriptor.fetchLimit = 500
+        let all = try context.fetch(descriptor)
         let groups = Dictionary(grouping: all, by: { $0.id })
         var pruned = 0
         for (_, group) in groups where group.count > 1 {

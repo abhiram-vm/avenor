@@ -373,6 +373,93 @@ enum GoalStatus: String, CaseIterable, Identifiable, Codable {
     }
 }
 
+// MARK: - RecurrenceTemplate
+//
+// Pre-built recurrence patterns for the template browser sheet. Each case
+// resolves to a concrete `RecurrenceRule` that gets applied to the chip
+// matrix (and ultimately persisted on `PersistedHabit`). The raw value is
+// the display name — it doubles as the routine card's meta-strip label
+// ("WEEKDAYS", "MON, WED, FRI") and the persistence token stored in
+// `PersistedHabit.templateRaw`, so renaming a case is a data migration.
+//
+// Templates are additive sugar over the manual chip matrix: applying one
+// just writes the equivalent `RecurrenceRule`; the user can still override
+// any individual chip afterwards (which detaches the template).
+
+enum RecurrenceTemplate: String, CaseIterable, Identifiable {
+    case everyDay     = "Every Day"
+    case weekdays     = "Weekdays"
+    case weekends     = "Weekends"
+    case everyMonday  = "Every Monday"
+    case everyMWF     = "Mon, Wed, Fri"
+    case everyTTh     = "Tue, Thu"
+    case biweekly     = "Bi-Weekly"
+    case firstOfMonth = "1st of Month"
+
+    var id: String { rawValue }
+
+    /// Scheduled weekdays in `Calendar` numbering (1=Sun…7=Sat — the same
+    /// convention as `RecurrenceRule.customDays` and the chip matrix).
+    /// Empty for the two non-weekly cadences (`biweekly`, `firstOfMonth`),
+    /// which the chip matrix can't express — they carry their schedule in
+    /// `rule` instead.
+    var days: Set<Int> {
+        switch self {
+        case .everyDay:     return [1, 2, 3, 4, 5, 6, 7]
+        case .weekdays:     return [2, 3, 4, 5, 6]
+        case .weekends:     return [1, 7]
+        case .everyMonday:  return [2]
+        case .everyMWF:     return [2, 4, 6]
+        case .everyTTh:     return [3, 5]
+        case .biweekly:     return []
+        case .firstOfMonth: return []
+        }
+    }
+
+    /// The concrete rule this template applies — single source of truth for
+    /// what selecting the template means.
+    var rule: RecurrenceRule {
+        switch self {
+        case .everyDay:     return .daily
+        case .weekdays:     return .weekdays
+        case .weekends:     return .customDays([1, 7])
+        case .everyMonday:  return .weekly(weekday: 2)
+        case .everyMWF:     return .customDays([2, 4, 6])
+        case .everyTTh:     return .customDays([3, 5])
+        case .biweekly:     return .biweekly(weekday: nil)
+        case .firstOfMonth: return .monthly(day: 1)
+        }
+    }
+
+    /// SF Symbol for the template browser row.
+    var icon: String {
+        switch self {
+        case .everyDay:     return "repeat"
+        case .weekdays:     return "briefcase"
+        case .weekends:     return "sun.max"
+        case .everyMonday:  return "calendar"
+        case .everyMWF:     return "calendar.day.timeline.leading"
+        case .everyTTh:     return "calendar.day.timeline.trailing"
+        case .biweekly:     return "arrow.2.squarepath"
+        case .firstOfMonth: return "1.circle"
+        }
+    }
+
+    /// One-line explanation under the template name.
+    var description: String {
+        switch self {
+        case .everyDay:     return "Repeats every day"
+        case .weekdays:     return "Repeats Monday through Friday"
+        case .weekends:     return "Repeats Saturday and Sunday"
+        case .everyMonday:  return "Repeats every Monday"
+        case .everyMWF:     return "Repeats Monday, Wednesday, Friday"
+        case .everyTTh:     return "Repeats Tuesday and Thursday"
+        case .biweekly:     return "Repeats every other week"
+        case .firstOfMonth: return "Repeats on the 1st of each month"
+        }
+    }
+}
+
 struct GoalUnit: Equatable {
     enum Kind: Equatable {
         case preset(UnitPreset)

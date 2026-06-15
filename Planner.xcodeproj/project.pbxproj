@@ -27,6 +27,13 @@
 			remoteGlobalIDString = 514484EE2FC502D20062284B;
 			remoteInfo = AvenorWidgetExtension;
 		};
+		517D9EBF2FD3B0E800E89EBD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4AD5FEF2F32E37D00A6E23A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C4AD5FF62F32E37D00A6E23A;
+			remoteInfo = Planner;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -48,6 +55,8 @@
 		514484F12FC502D20062284B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		514484F32FC502D20062284B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		51779B0C2FCFABD0008DEA01 /* AvenorWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AvenorWidgetExtension.entitlements; sourceTree = "<group>"; };
+		517D9EBB2FD3B0E800E89EBD /* PlannerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlannerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		517D9ECC2FD3D11500E89EBD /* Planner.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = Planner.xctestplan; sourceTree = "<group>"; };
 		C4AD5FF72F32E37D00A6E23A /* Avenor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Avenor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -84,6 +93,11 @@
 			path = AvenorWidget;
 			sourceTree = "<group>";
 		};
+		517D9EBC2FD3B0E800E89EBD /* PlannerTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PlannerTests;
+			sourceTree = "<group>";
+		};
 		C4AD5FF92F32E37D00A6E23A /* Planner */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -102,6 +116,13 @@
 			files = (
 				514484F42FC502D20062284B /* SwiftUI.framework in Frameworks */,
 				514484F22FC502D20062284B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		517D9EB82FD3B0E800E89EBD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,9 +148,11 @@
 		C4AD5FEE2F32E37D00A6E23A = {
 			isa = PBXGroup;
 			children = (
+				517D9ECC2FD3D11500E89EBD /* Planner.xctestplan */,
 				51779B0C2FCFABD0008DEA01 /* AvenorWidgetExtension.entitlements */,
 				C4AD5FF92F32E37D00A6E23A /* Planner */,
 				514484F52FC502D20062284B /* AvenorWidget */,
+				517D9EBC2FD3B0E800E89EBD /* PlannerTests */,
 				514484F02FC502D20062284B /* Frameworks */,
 				C4AD5FF82F32E37D00A6E23A /* Products */,
 			);
@@ -140,6 +163,7 @@
 			children = (
 				C4AD5FF72F32E37D00A6E23A /* Avenor.app */,
 				514484EF2FC502D20062284B /* AvenorWidgetExtension.appex */,
+				517D9EBB2FD3B0E800E89EBD /* PlannerTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -168,6 +192,29 @@
 			productName = AvenorWidgetExtension;
 			productReference = 514484EF2FC502D20062284B /* AvenorWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		517D9EBA2FD3B0E800E89EBD /* PlannerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 517D9EC32FD3B0E800E89EBD /* Build configuration list for PBXNativeTarget "PlannerTests" */;
+			buildPhases = (
+				517D9EB72FD3B0E800E89EBD /* Sources */,
+				517D9EB82FD3B0E800E89EBD /* Frameworks */,
+				517D9EB92FD3B0E800E89EBD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				517D9EC02FD3B0E800E89EBD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				517D9EBC2FD3B0E800E89EBD /* PlannerTests */,
+			);
+			name = PlannerTests;
+			packageProductDependencies = (
+			);
+			productName = PlannerTests;
+			productReference = 517D9EBB2FD3B0E800E89EBD /* PlannerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		C4AD5FF62F32E37D00A6E23A /* Planner */ = {
 			isa = PBXNativeTarget;
@@ -207,6 +254,10 @@
 					514484EE2FC502D20062284B = {
 						CreatedOnToolsVersion = 26.5;
 					};
+					517D9EBA2FD3B0E800E89EBD = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = C4AD5FF62F32E37D00A6E23A;
+					};
 					C4AD5FF62F32E37D00A6E23A = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -228,12 +279,20 @@
 			targets = (
 				C4AD5FF62F32E37D00A6E23A /* Planner */,
 				514484EE2FC502D20062284B /* AvenorWidgetExtension */,
+				517D9EBA2FD3B0E800E89EBD /* PlannerTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		514484ED2FC502D20062284B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		517D9EB92FD3B0E800E89EBD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -251,6 +310,13 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		514484EB2FC502D20062284B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		517D9EB72FD3B0E800E89EBD /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -277,6 +343,11 @@
 			target = 514484EE2FC502D20062284B /* AvenorWidgetExtension */;
 			targetProxy = 514485882FC5E7950062284B /* PBXContainerItemProxy */;
 		};
+		517D9EC02FD3B0E800E89EBD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C4AD5FF62F32E37D00A6E23A /* Planner */;
+			targetProxy = 517D9EBF2FD3B0E800E89EBD /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -288,7 +359,7 @@
 				CODE_SIGN_ENTITLEMENTS = AvenorWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6FS3766HMU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AvenorWidget/Info.plist;
@@ -300,7 +371,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.AvenorWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -321,7 +392,7 @@
 				CODE_SIGN_ENTITLEMENTS = AvenorWidgetExtension.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6FS3766HMU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = AvenorWidget/Info.plist;
@@ -333,7 +404,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.AvenorWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -343,6 +414,51 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		517D9EC12FD3B0E800E89EBD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Avenor.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Avenor";
+			};
+			name = Debug;
+		};
+		517D9EC22FD3B0E800E89EBD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Avenor.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Avenor";
 			};
 			name = Release;
 		};
@@ -478,7 +594,7 @@
 				CODE_SIGN_ENTITLEMENTS = Planner/Planner.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6FS3766HMU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -495,7 +611,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor;
 				PRODUCT_NAME = Avenor;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -518,9 +634,10 @@
 				CODE_SIGN_ENTITLEMENTS = Planner/Planner.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 6FS3766HMU;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Planner/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Avenor;
@@ -535,7 +652,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor;
 				PRODUCT_NAME = Avenor;
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -557,6 +674,15 @@
 			buildConfigurations = (
 				514485082FC502D20062284B /* Debug */,
 				514485092FC502D20062284B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		517D9EC32FD3B0E800E89EBD /* Build configuration list for PBXNativeTarget "PlannerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				517D9EC12FD3B0E800E89EBD /* Debug */,
+				517D9EC22FD3B0E800E89EBD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

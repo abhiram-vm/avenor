@@ -12,10 +12,23 @@ struct ContentView: View {
     // collapses anything into the system "More" overflow.
     @State private var selectedTab: Int = 0
 
+    /// Passes through from PlannerApp's onOpenURL handler so the capture bar
+    /// can be focused externally (e.g. Action Button, Spotlight, URL scheme).
+    var captureOnOpen: Binding<Bool> = .constant(false)
+
+    // Builds OverviewTabView with the external-focus binding wired in.
+    // Using the stored-property-after-init pattern so the call site in body
+    // stays simple and OverviewTabView's default initializer is preserved.
+    private var overviewView: some View {
+        var view = OverviewTabView()
+        view.shouldFocusCapture = captureOnOpen
+        return view
+    }
+
     var body: some View {
         let p = theme.palette
         TabView(selection: $selectedTab) {
-            OverviewTabView()
+            overviewView
                 .tabItem { Label("Overview", systemImage: "square.grid.2x2") }
                 .tag(0)
 
@@ -34,6 +47,9 @@ struct ContentView: View {
             CalendarTabView()
                 .tabItem { Label("Calendar", systemImage: "calendar") }
                 .tag(4)
+        }
+        .onChange(of: captureOnOpen.wrappedValue) { _, newValue in
+            if newValue { selectedTab = 0 }
         }
         .tint(p.controlTint)
 
