@@ -37,14 +37,16 @@ struct RecurrenceTemplateSheet: View {
             .scrollIndicators(.hidden)
             .livingCanvas(p)
             .navigationTitle("Quick Templates")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(p.textSecondary)
                 }
             }
+            #if os(iOS)
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+            #endif
         }
         .preferredColorScheme(p.colorScheme)
         .tint(p.controlTint)

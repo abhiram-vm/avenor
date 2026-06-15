@@ -27,7 +27,9 @@ enum WidgetSnapshotPublisher {
     static func publishToday(tasks: [PersistedTask]) {
         let today = makeTodayPayload(from: tasks)
         WidgetSnapshotIO.writeToday(today)
+        #if os(iOS)
         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+        #endif
         logger.debug("Published today snapshot — \(today.totalDueToday, privacy: .public) item(s).")
     }
 
@@ -35,7 +37,9 @@ enum WidgetSnapshotPublisher {
     static func publishGoals(_ goals: [PersistedGoal]) {
         let payload = makeGoalsPayload(from: goals)
         WidgetSnapshotIO.writeGoals(payload)
+        #if os(iOS)
         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
+        #endif
         logger.debug("Published goals snapshot — \(payload.goals.count, privacy: .public) goal(s).")
     }
 
@@ -50,7 +54,9 @@ enum WidgetSnapshotPublisher {
     static func publishRoutine(_ habits: [PersistedHabit]) {
         let payload = makeRoutinePayload(from: habits)
         WidgetSnapshotIO.writeRoutine(payload)
+        #if os(iOS)
         WidgetCenter.shared.reloadTimelines(ofKind: tasksWidgetKind)
+        #endif
         logger.debug("Published routine snapshot — \(payload.habits.count, privacy: .public) loop(s).")
     }
 
@@ -59,7 +65,9 @@ enum WidgetSnapshotPublisher {
     static func publishTasks(_ tasks: [PersistedTask]) {
         let today = makeTodayPayload(from: tasks)
         WidgetSnapshotIO.writeToday(today)
+        #if os(iOS)
         WidgetCenter.shared.reloadTimelines(ofKind: tasksWidgetKind)
+        #endif
     }
 
     // MARK: Today

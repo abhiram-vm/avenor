@@ -88,33 +88,41 @@ struct TasksTabView: View {
                 .animation(spring, value: expandedTaskID)
             }
             .navigationTitle("Tasks")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { archiveButton }
-                ToolbarItem(placement: .topBarTrailing) { plusButton }
+                ToolbarItem(placement: .avenorLeading) { archiveButton }
+                ToolbarItem(placement: .avenorTrailing) { plusButton }
             }
             .sheet(isPresented: $showingArchive) {
                 ArchiveTaskListView()
+                    #if os(iOS)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(p.sheetBackground)
                     .presentationCornerRadius(DesignTokens.Radius.sheet)
+                    #endif
             }
             .sheet(isPresented: $showingNewItemSheet) {
                 NewItemSheet(initialType: draftType) { draft in
                     insert(from: draft)
                 }
+                #if os(iOS)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(p.id == .liquidGlass ? AnyShapeStyle(.clear) : AnyShapeStyle(p.sheetBackground))
                 .presentationCornerRadius(DesignTokens.Radius.sheet)
+                #endif
             }
         }
+        #if os(iOS)
         .searchable(
             text: $searchText,
             placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: "Search tasks"
         )
+        #else
+        .searchable(text: $searchText, prompt: "Search tasks")
+        #endif
         .onChange(of: tasks.map(\.id)) { _, _ in
             WidgetSnapshotPublisher.publishToday(tasks: tasks)
         }

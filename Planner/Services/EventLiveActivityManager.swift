@@ -1,3 +1,4 @@
+#if os(iOS)
 import Foundation
 import ActivityKit
 import os
@@ -143,3 +144,4 @@ enum EventLiveActivityManager {
         "#FFFFFFFF"
     }
 }
+#endif

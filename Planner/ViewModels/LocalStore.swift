@@ -48,7 +48,9 @@ final class ThemeStore {
             WidgetAppGroup.defaults?.synchronize()
             // Ask WidgetKit to rebuild every active timeline so the new
             // palette ships to the lock screen / home screen immediately.
+            #if os(iOS)
             WidgetCenter.shared.reloadAllTimelines()
+            #endif
         }
     }
 

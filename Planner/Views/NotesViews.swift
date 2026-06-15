@@ -111,7 +111,9 @@ struct NoteRow: View {
                 .font(p.font(.headline))
                 .tracking(p.headlineTracking)
                 .foregroundStyle(p.textPrimary)
+                #if os(iOS)
                 .textInputAutocapitalization(.sentences)
+                #endif
                 .onChange(of: note.title) { _, _ in
                     note.lastEditedAt = .now
                 }

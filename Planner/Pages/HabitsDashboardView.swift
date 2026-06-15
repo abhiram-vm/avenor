@@ -63,10 +63,12 @@ struct HabitsFeed: View {
         .animation(spring, value: activeHabits.map(\.id))
         .sheet(item: $rekindleHabit) { habit in
             RekindleStreakSheet(habit: habit)
+                #if os(iOS)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(theme.palette.sheetBackground)
                 .presentationCornerRadius(DesignTokens.Radius.sheet)
+                #endif
         }
     }
 
@@ -547,14 +549,16 @@ struct RekindleStreakSheet: View {
             .scrollIndicators(.hidden)
             .livingCanvas(p)
             .navigationTitle("Rekindle Streak")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .avenorLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(p.textSecondary)
                 }
             }
+            #if os(iOS)
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+            #endif
         }
         .preferredColorScheme(p.colorScheme)
         .tint(p.controlTint)

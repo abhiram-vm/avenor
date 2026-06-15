@@ -341,7 +341,7 @@ struct AddGoalSheet: View {
             }
             .animation(.spring(response: 0.35, dampingFraction: 0.85), value: step)
             .navigationTitle(step == .goal ? "New Goal" : "Define Your System")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
                 switch step {
                 case .goal:
@@ -350,7 +350,7 @@ struct AddGoalSheet: View {
                             .foregroundStyle(p.textSecondary)
                     }
                 case .defineSystem:
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .avenorLeading) {
                         Button {
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                                 step = .goal
@@ -366,7 +366,9 @@ struct AddGoalSheet: View {
                     }
                 }
             }
+            #if os(iOS)
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+            #endif
             .safeAreaInset(edge: .bottom) {
                 switch step {
                 case .goal:        goalCTABar
@@ -381,7 +383,9 @@ struct AddGoalSheet: View {
             RecurrenceTemplateSheet(selected: selectedTemplate) { template in
                 apply(template)
             }
+            #if os(iOS)
             .presentationDetents([.medium, .large])
+            #endif
         }
     }
 
@@ -965,13 +969,13 @@ struct UpdateGoalSheet: View {
                 .scrollIndicators(.hidden)
             }
             .navigationTitle("Update Progress")
-            .navigationBarTitleDisplayMode(.inline)
+            .avenorInlineNavTitle()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .avenorLeading) {
                     Button("Close") { dismiss() }
                         .foregroundStyle(p.textSecondary)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .avenorTrailing) {
                     Button("Save") {
                         applySetCurrentIfValid()
                         let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -983,7 +987,9 @@ struct UpdateGoalSheet: View {
                     .foregroundStyle(p.textPrimary)
                 }
             }
+            #if os(iOS)
             .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+            #endif
             .onAppear {
                 setCurrentText = normalizedText(goal.currentValue, allowsDecimals: goal.unit.allowsDecimals)
                 note = goal.lastUpdateNote ?? ""
@@ -1059,8 +1065,10 @@ struct UpdateGoalSheet: View {
 
                 HStack(spacing: 10) {
                     TextField("0", text: $setCurrentText)
+                        #if os(iOS)
                         .keyboardType(goal.unit.allowsDecimals ? .decimalPad : .numberPad)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                         .foregroundStyle(p.textPrimary)
                         .font(p.font(.body))
