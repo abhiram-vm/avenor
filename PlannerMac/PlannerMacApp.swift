@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import SwiftUI
 import SwiftData
 import os
@@ -85,6 +86,22 @@ struct PlannerMacApp: App {
         Settings {
             Mac_SettingsView()
                 .environment(theme)
+=======
+//
+//  PlannerMacApp.swift
+//  PlannerMac
+//
+//  Created by Abhiram Menon on 6/15/26.
+//
+
+import SwiftUI
+
+@main
+struct PlannerMacApp: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+>>>>>>> Stashed changes
         }
     }
 }

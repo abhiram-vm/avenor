@@ -13,6 +13,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		512919A02FE0B7AB0006B6FD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4AD5FEF2F32E37D00A6E23A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 512919922FE0B7A90006B6FD;
+			remoteInfo = PlannerMac;
+		};
+		512919AA2FE0B7AB0006B6FD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4AD5FEF2F32E37D00A6E23A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 512919922FE0B7A90006B6FD;
+			remoteInfo = PlannerMac;
+		};
 		514485032FC502D20062284B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = C4AD5FEF2F32E37D00A6E23A /* Project object */;
@@ -51,6 +65,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		512919932FE0B7A90006B6FD /* PlannerMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PlannerMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5129199F2FE0B7AB0006B6FD /* PlannerMacTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlannerMacTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		512919A92FE0B7AB0006B6FD /* PlannerMacUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlannerMacUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		514484EF2FC502D20062284B /* AvenorWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AvenorWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		514484F12FC502D20062284B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		514484F32FC502D20062284B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -61,6 +78,45 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		513C12DE2FE0BABE002FD18B /* Exceptions for "Planner" folder in "PlannerMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				DesignSystem/DesignTokens.swift,
+				DesignSystem/ThemePalette.swift,
+				Models/Models.swift,
+				Models/PersistentModels.swift,
+				Services/AvenorIntents.swift,
+				Services/AvenorShortcuts.swift,
+				Services/CalendarKitService.swift,
+				Services/CaptureParser.swift,
+				Services/ConflictResolver.swift,
+				Services/GoalConversionMigration.swift,
+				Services/GoalMutator.swift,
+				Services/LifecycleAutomation.swift,
+				Services/NotificationManager.swift,
+				Services/SmartCaptureEngine.swift,
+				Services/TaskMutator.swift,
+				Services/WidgetActionApplier.swift,
+				Services/WidgetSnapshotPublisher.swift,
+				Shared/WidgetSharedModels.swift,
+				Utilities/DateFormatting.swift,
+				Utilities/MarkdownRenderer.swift,
+				Utilities/TaskCalendarService.swift,
+				ViewModels/AppStore.swift,
+				ViewModels/LocalStore.swift,
+				ViewModels/MigrationService.swift,
+				Views/CommonViews.swift,
+				Views/GoalIncrementSwipeRow.swift,
+				Views/GoalsViews.swift,
+				Views/RecurrenceTemplateSheet.swift,
+				Views/SheetComponents.swift,
+				Views/StarkCaptureBar.swift,
+				Views/StarkEmptyState.swift,
+				Views/StarkSwipeRow.swift,
+				Views/TasksViews.swift,
+			);
+			target = 512919922FE0B7A90006B6FD /* PlannerMac */;
+		};
 		514485062FC502D20062284B /* Exceptions for "AvenorWidget" folder in "AvenorWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -85,6 +141,21 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		512919942FE0B7A90006B6FD /* PlannerMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PlannerMac;
+			sourceTree = "<group>";
+		};
+		512919A22FE0B7AB0006B6FD /* PlannerMacTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PlannerMacTests;
+			sourceTree = "<group>";
+		};
+		512919AC2FE0B7AB0006B6FD /* PlannerMacUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = PlannerMacUITests;
+			sourceTree = "<group>";
+		};
 		514484F52FC502D20062284B /* AvenorWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -103,6 +174,7 @@
 			exceptions = (
 				51779B0E2FCFAD3F008DEA01 /* Exceptions for "Planner" folder in "Planner" target */,
 				514485162FC505B10062284B /* Exceptions for "Planner" folder in "AvenorWidgetExtension" target */,
+				513C12DE2FE0BABE002FD18B /* Exceptions for "Planner" folder in "PlannerMac" target */,
 			);
 			path = Planner;
 			sourceTree = "<group>";
@@ -110,6 +182,27 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		512919902FE0B7A90006B6FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5129199C2FE0B7AB0006B6FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		512919A62FE0B7AB0006B6FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		514484EC2FC502D20062284B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -153,6 +246,9 @@
 				C4AD5FF92F32E37D00A6E23A /* Planner */,
 				514484F52FC502D20062284B /* AvenorWidget */,
 				517D9EBC2FD3B0E800E89EBD /* PlannerTests */,
+				512919942FE0B7A90006B6FD /* PlannerMac */,
+				512919A22FE0B7AB0006B6FD /* PlannerMacTests */,
+				512919AC2FE0B7AB0006B6FD /* PlannerMacUITests */,
 				514484F02FC502D20062284B /* Frameworks */,
 				C4AD5FF82F32E37D00A6E23A /* Products */,
 			);
@@ -164,6 +260,9 @@
 				C4AD5FF72F32E37D00A6E23A /* Avenor.app */,
 				514484EF2FC502D20062284B /* AvenorWidgetExtension.appex */,
 				517D9EBB2FD3B0E800E89EBD /* PlannerTests.xctest */,
+				512919932FE0B7A90006B6FD /* PlannerMac.app */,
+				5129199F2FE0B7AB0006B6FD /* PlannerMacTests.xctest */,
+				512919A92FE0B7AB0006B6FD /* PlannerMacUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -171,6 +270,74 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		512919922FE0B7A90006B6FD /* PlannerMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 512919B52FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMac" */;
+			buildPhases = (
+				5129198F2FE0B7A90006B6FD /* Sources */,
+				512919902FE0B7A90006B6FD /* Frameworks */,
+				512919912FE0B7A90006B6FD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				512919942FE0B7A90006B6FD /* PlannerMac */,
+			);
+			name = PlannerMac;
+			packageProductDependencies = (
+			);
+			productName = PlannerMac;
+			productReference = 512919932FE0B7A90006B6FD /* PlannerMac.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5129199E2FE0B7AB0006B6FD /* PlannerMacTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 512919B62FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMacTests" */;
+			buildPhases = (
+				5129199B2FE0B7AB0006B6FD /* Sources */,
+				5129199C2FE0B7AB0006B6FD /* Frameworks */,
+				5129199D2FE0B7AB0006B6FD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				512919A12FE0B7AB0006B6FD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				512919A22FE0B7AB0006B6FD /* PlannerMacTests */,
+			);
+			name = PlannerMacTests;
+			packageProductDependencies = (
+			);
+			productName = PlannerMacTests;
+			productReference = 5129199F2FE0B7AB0006B6FD /* PlannerMacTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		512919A82FE0B7AB0006B6FD /* PlannerMacUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 512919B72FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMacUITests" */;
+			buildPhases = (
+				512919A52FE0B7AB0006B6FD /* Sources */,
+				512919A62FE0B7AB0006B6FD /* Frameworks */,
+				512919A72FE0B7AB0006B6FD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				512919AB2FE0B7AB0006B6FD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				512919AC2FE0B7AB0006B6FD /* PlannerMacUITests */,
+			);
+			name = PlannerMacUITests;
+			packageProductDependencies = (
+			);
+			productName = PlannerMacUITests;
+			productReference = 512919A92FE0B7AB0006B6FD /* PlannerMacUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		514484EE2FC502D20062284B /* AvenorWidgetExtension */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 514485072FC502D20062284B /* Build configuration list for PBXNativeTarget "AvenorWidgetExtension" */;
@@ -248,9 +415,20 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2650;
+				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					512919922FE0B7A90006B6FD = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					5129199E2FE0B7AB0006B6FD = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 512919922FE0B7A90006B6FD;
+					};
+					512919A82FE0B7AB0006B6FD = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 512919922FE0B7A90006B6FD;
+					};
 					514484EE2FC502D20062284B = {
 						CreatedOnToolsVersion = 26.5;
 					};
@@ -280,11 +458,35 @@
 				C4AD5FF62F32E37D00A6E23A /* Planner */,
 				514484EE2FC502D20062284B /* AvenorWidgetExtension */,
 				517D9EBA2FD3B0E800E89EBD /* PlannerTests */,
+				512919922FE0B7A90006B6FD /* PlannerMac */,
+				5129199E2FE0B7AB0006B6FD /* PlannerMacTests */,
+				512919A82FE0B7AB0006B6FD /* PlannerMacUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		512919912FE0B7A90006B6FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5129199D2FE0B7AB0006B6FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		512919A72FE0B7AB0006B6FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		514484ED2FC502D20062284B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -309,6 +511,27 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		5129198F2FE0B7A90006B6FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5129199B2FE0B7AB0006B6FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		512919A52FE0B7AB0006B6FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		514484EB2FC502D20062284B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -333,6 +556,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		512919A12FE0B7AB0006B6FD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 512919922FE0B7A90006B6FD /* PlannerMac */;
+			targetProxy = 512919A02FE0B7AB0006B6FD /* PBXContainerItemProxy */;
+		};
+		512919AB2FE0B7AB0006B6FD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 512919922FE0B7A90006B6FD /* PlannerMac */;
+			targetProxy = 512919AA2FE0B7AB0006B6FD /* PBXContainerItemProxy */;
+		};
 		514485042FC502D20062284B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 514484EE2FC502D20062284B /* AvenorWidgetExtension */;
@@ -351,6 +584,160 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		512919AF2FE0B7AB0006B6FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		512919B02FE0B7AB0006B6FD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		512919B12FE0B7AB0006B6FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PlannerMac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PlannerMac";
+			};
+			name = Debug;
+		};
+		512919B22FE0B7AB0006B6FD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMacTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PlannerMac.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PlannerMac";
+			};
+			name = Release;
+		};
+		512919B32FE0B7AB0006B6FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMacUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = PlannerMac;
+			};
+			name = Debug;
+		};
+		512919B42FE0B7AB0006B6FD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6FS3766HMU;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMacUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = PlannerMac;
+			};
+			name = Release;
+		};
 		514485082FC502D20062284B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -607,6 +994,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -648,6 +1036,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -669,6 +1058,33 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		512919B52FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				512919AF2FE0B7AB0006B6FD /* Debug */,
+				512919B02FE0B7AB0006B6FD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		512919B62FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMacTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				512919B12FE0B7AB0006B6FD /* Debug */,
+				512919B22FE0B7AB0006B6FD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		512919B72FE0B7AB0006B6FD /* Build configuration list for PBXNativeTarget "PlannerMacUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				512919B32FE0B7AB0006B6FD /* Debug */,
+				512919B42FE0B7AB0006B6FD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		514485072FC502D20062284B /* Build configuration list for PBXNativeTarget "AvenorWidgetExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

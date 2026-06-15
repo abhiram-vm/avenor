@@ -26,11 +26,19 @@ struct PlannerApp: App {
         // the symptom. A fault-level log entry here gives a clear crash
         // trail in Instruments / Console even on release builds.
         do {
+            let schema = Schema([
+                PersistedTask.self,
+                PersistedNote.self,
+                PersistedGoal.self,
+                PersistedHabit.self
+            ])
+            let config = ModelConfiguration(
+                schema: schema,
+                cloudKitDatabase: .automatic
+            )
             container = try ModelContainer(
-                for: PersistedTask.self,
-                     PersistedNote.self,
-                     PersistedGoal.self,
-                     PersistedHabit.self
+                for: schema,
+                configurations: [config]
             )
         } catch {
             launchLog.fault(
