@@ -17,10 +17,13 @@ import SwiftData
 
 struct HabitsFeed: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.modelContext) private var modelContext
 
     // Active loops only — archived habits are filtered out but retain their
     // rows (and streak history) in the store.
     @Query(sort: \PersistedHabit.sortOrder) private var habits: [PersistedHabit]
+
+    @State private var rekindleHabit: PersistedHabit?
 
     private let spring = Animation.spring(response: 0.35, dampingFraction: 0.7)
     private let exitSpring = Animation.spring(duration: 0.25)
@@ -33,9 +36,12 @@ struct HabitsFeed: View {
             } else {
                 ForEach(activeHabits) { habit in
                     HabitSwipeRow(onArchive: { archive(habit) }) {
-                        HabitCardRow(habit: habit) {
-                            complete(habit)
-                        }
+                        HabitCardRow(
+                            habit: habit,
+                            isEligible: isEligible(habit),
+                            onComplete: { complete(habit) },
+                            onRekindle: { rekindleHabit = habit }
+                        )
                         .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
                         .padding(.vertical, 6)
                         .contextMenu {
@@ -55,6 +61,13 @@ struct HabitsFeed: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .animation(spring, value: activeHabits.map(\.id))
+        .sheet(item: $rekindleHabit) { habit in
+            RekindleStreakSheet(habit: habit)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(theme.palette.sheetBackground)
+                .presentationCornerRadius(DesignTokens.Radius.sheet)
+        }
     }
 
     private var emptyState: some View {
@@ -70,9 +83,19 @@ struct HabitsFeed: View {
         habits.filter { !$0.isArchived }
     }
 
+    // MARK: Eligibility
+
+    /// A tap is meaningful when it would either reverse today's log or land a
+    /// fresh, in-window completion. Anything else (off-day, already-logged
+    /// week) is inert — the card dims and the press no-ops.
+    private func isEligible(_ habit: PersistedHabit) -> Bool {
+        habit.isCompletedToday() || habit.isEligibleForCompletion(on: .now)
+    }
+
     // MARK: Mutations
 
     private func complete(_ habit: PersistedHabit) {
+        guard isEligible(habit) else { return }
         withAnimation(exitSpring) {
             habit.toggleToday()
         }
@@ -97,7 +120,15 @@ struct HabitCardRow: View {
     @Environment(ThemeStore.self) private var theme
 
     @Bindable var habit: PersistedHabit
+    /// `false` when a tap would be inert (off-day or already logged for the
+    /// window) — the streak loop dims and stops firing.
+    let isEligible: Bool
     let onComplete: () -> Void
+    let onRekindle: () -> Void
+
+    private var isBroken: Bool {
+        habit.isStreakBroken && habit.restorationAvailable
+    }
 
     var body: some View {
         let p = theme.palette
@@ -119,6 +150,10 @@ struct HabitCardRow: View {
                                 .textCase(.uppercase)
                                 .foregroundStyle(p.accent.opacity(0.8))
                         }
+
+                        if isBroken {
+                            crackedFlame(p)
+                        }
                     }
 
                     // Parsed, stripped title — the editorial focal point.
@@ -137,12 +172,32 @@ struct HabitCardRow: View {
                 StreakLoop(
                     streak: habit.streakCount,
                     isCompletedToday: habit.isCompletedToday(),
+                    isInteractive: isEligible,
                     palette: p,
                     onTrigger: onComplete
                 )
             }
             .padding(DesignTokens.Spacing.cardInset)
         }
+    }
+
+    // Broken-streak affordance: a dimmed, muted `flame.fill` that opens the
+    // "Rekindle Streak" sheet. The historical streak integer is preserved —
+    // burning a priority task re-locks it and the flame returns to full white.
+    private func crackedFlame(_ p: ThemePalette) -> some View {
+        Button(action: onRekindle) {
+            HStack(spacing: 4) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(p.textTertiary.opacity(0.4))
+                Text("Rekindle")
+                    .font(p.font(.micro))
+                    .tracking(p.microTracking)
+                    .textCase(.uppercase)
+                    .foregroundStyle(p.textSecondary)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -159,6 +214,9 @@ struct HabitCardRow: View {
 struct StreakLoop: View {
     let streak: Int
     let isCompletedToday: Bool
+    /// When `false` the loop is inert — dimmed and non-firing — because a tap
+    /// wouldn't change anything (off-day or already logged for the window).
+    var isInteractive: Bool = true
     let palette: ThemePalette
     let onTrigger: () -> Void
 
@@ -207,6 +265,8 @@ struct StreakLoop: View {
                 .foregroundStyle(palette.textTertiary)
         }
         .frame(width: 72)
+        .opacity(isInteractive ? 1.0 : 0.4)
+        .animation(KineticSpring.dissolve, value: isInteractive)
         .contentShape(Rectangle())
         .gesture(pressGesture)
         .accessibilityElement()
@@ -245,6 +305,9 @@ struct StreakLoop: View {
     }
 
     private func fire() {
+        // Inert when ineligible: suppress haptic + skip the toggle so an
+        // off-day or double-log press reads as a no-op.
+        guard isInteractive else { return }
         AppHaptic.pop()
         onTrigger()
     }
@@ -428,6 +491,156 @@ struct HabitSwipeRow<Content: View>: View {
     private func rubberBand(_ x: CGFloat) -> CGFloat {
         let limit: CGFloat = 64
         return limit * (1 - 1 / (x / limit + 1))
+    }
+}
+
+// MARK: - RekindleStreakSheet (Feature 3 — "Burn a Task")
+//
+// When a routine's scheduling window lapses, its streak integer is preserved
+// (not zeroed) and the card surfaces a "Rekindle" affordance. This sheet lets
+// the user spend a high-priority task to restore the streak: tapping a P1 task
+// atomically completes + archives it, re-locks the streak via
+// `habit.rekindleStreak()`, and dismisses. One burn per lapse.
+
+struct RekindleStreakSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Environment(ThemeStore.self) private var theme
+
+    @Bindable var habit: PersistedHabit
+
+    // Highest-priority tasks are the only valid "fuel". Filtered to still-open
+    // items in-memory (completion is type-dependent, so it can't live in the
+    // SwiftData predicate cleanly).
+    @Query(filter: #Predicate<PersistedTask> { $0.priority == 1 },
+           sort: \PersistedTask.sortOrder) private var priorityTasks: [PersistedTask]
+
+    var body: some View {
+        let p = theme.palette
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.stackLarge) {
+                    header(p)
+
+                    if burnable.isEmpty {
+                        StarkEmptyState(
+                            "No P1 tasks to burn.",
+                            footnote: "Capture a high-priority task with \"!!!\" to fuel a rekindle."
+                        )
+                        .padding(.top, 24)
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(burnable) { task in
+                                Button { burn(task) } label: {
+                                    burnRow(task, p)
+                                }
+                                .buttonStyle(.plain)
+                                Rectangle().fill(p.hairline).frame(height: 0.5)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
+                .padding(.top, DesignTokens.Spacing.pageTop)
+                .padding(.bottom, DesignTokens.Spacing.pageBottom)
+            }
+            .scrollIndicators(.hidden)
+            .livingCanvas(p)
+            .navigationTitle("Rekindle Streak")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(p.textSecondary)
+                }
+            }
+            .toolbarColorScheme(p.colorScheme, for: .navigationBar)
+        }
+        .preferredColorScheme(p.colorScheme)
+        .tint(p.controlTint)
+    }
+
+    private func header(_ p: ThemePalette) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(p.accent)
+                Text("\(habit.streakCount)-day streak at risk")
+                    .font(p.font(.micro))
+                    .tracking(p.microTracking)
+                    .textCase(.uppercase)
+                    .monospacedDigit()
+                    .foregroundStyle(p.textSecondary)
+            }
+            Text("Burn a priority task to lock it back in.")
+                .font(p.font(.body))
+                .foregroundStyle(p.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func burnRow(_ task: PersistedTask, _ p: ThemePalette) -> some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(task.type.tint)
+                .frame(width: 2, height: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(task.type.displayName)
+                    .font(p.font(.micro))
+                    .tracking(p.microTracking)
+                    .textCase(.uppercase)
+                    .foregroundStyle(p.textTertiary)
+                Text(task.title.isEmpty ? "Untitled" : task.title)
+                    .font(p.font(.headline))
+                    .tracking(p.headlineTracking)
+                    .foregroundStyle(p.textPrimary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "flame")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(p.accent)
+        }
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+    }
+
+    // MARK: Data
+
+    private var burnable: [PersistedTask] {
+        priorityTasks.filter { t in
+            switch t.type {
+            case .todo, .reminder: return (t.isDone ?? false) == false
+            case .idea:            return (t.ideaStatus ?? .thinking) != .completed
+            }
+        }
+    }
+
+    // MARK: Burn
+
+    private func burn(_ task: PersistedTask) {
+        let now = Date.now
+        // Complete + archive the task atomically (type-dependent completion).
+        switch task.type {
+        case .todo, .reminder:
+            task.isDone = true
+        case .idea:
+            task.ideaStatus = .completed
+        }
+        task.completedAt = now
+        task.updatedAt = now
+        NotificationManager.shared.cancel(for: task)
+
+        // Re-lock the streak — preserves the historical integer.
+        habit.rekindleStreak(asOf: now)
+
+        try? modelContext.save()
+        AppHaptic.success()
+        dismiss()
     }
 }
 

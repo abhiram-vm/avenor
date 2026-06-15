@@ -45,6 +45,10 @@ struct StarkCaptureBar: View {
     /// Called on submit. Receives the trimmed raw text.
     let onSubmit: (String) -> Void
 
+    /// External focus trigger. Set to true to programmatically focus the bar;
+    /// the bar resets it to false immediately after acquiring focus.
+    var shouldFocus: Binding<Bool> = .constant(false)
+
     // MARK: Private state
 
     @Environment(ThemeStore.self) private var theme
@@ -74,6 +78,12 @@ struct StarkCaptureBar: View {
         .animation(.spring(response: 0.30, dampingFraction: 0.80), value: engine.tokens.count)
         .animation(.spring(response: 0.30, dampingFraction: 0.80), value: isFocused)
         .animation(.spring(response: 0.30, dampingFraction: 0.80), value: text.isEmpty)
+        .onChange(of: shouldFocus.wrappedValue) { _, newValue in
+            if newValue {
+                isFocused = true
+                shouldFocus.wrappedValue = false
+            }
+        }
     }
 
     // MARK: - Pre-typing contextual shelf

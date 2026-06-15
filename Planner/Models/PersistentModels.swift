@@ -383,6 +383,13 @@ final class PersistedHabit {
     /// Optional hashtag carried over from capture ("#health"). Loose string.
     var tag: String?
 
+    /// Raw value of the `RecurrenceTemplate` the user picked in the template
+    /// browser, when the cadence came from a template rather than manual
+    /// chips. Drives the routine card's meta-strip label ("WEEKDAYS",
+    /// "MON, WED, FRI") in place of raw day abbreviations. Optional-with-nil
+    /// is a CloudKit-safe additive column; legacy rows read as "no template".
+    var templateRaw: String?
+
     /// Priority marker (1 = highest … 3), mirrored from the capture bangs.
     /// Optional so legacy / CloudKit rows default cleanly.
     var priority: Int?
@@ -403,6 +410,16 @@ final class PersistedHabit {
     /// no schema migration required.
     var anchorGoalID: UUID?
 
+    /// Streak-restoration state. When a scheduled window is missed,
+    /// `checkStreakLapse` flips `isStreakBroken` true *without* zeroing
+    /// `streakCount` — the historical value is preserved so the user can
+    /// "Rekindle" it by burning a high-priority task. `restorationAvailable`
+    /// gates whether the burn affordance is offered. Both carry inline
+    /// defaults so this is a lightweight, CloudKit-safe additive migration:
+    /// every legacy row reads `false` for both.
+    var isStreakBroken: Bool = false
+    var restorationAvailable: Bool = false
+
     init(
         id: UUID = UUID(),
         title: String,
@@ -410,11 +427,14 @@ final class PersistedHabit {
         recurrence: RecurrenceRule = .daily,
         anchorDate: Date? = nil,
         tag: String? = nil,
+        templateRaw: String? = nil,
         priority: Int? = nil,
         streakCount: Int = 0,
         lastCompletedAt: Date? = nil,
         isArchived: Bool = false,
         anchorGoalID: UUID? = nil,
+        isStreakBroken: Bool = false,
+        restorationAvailable: Bool = false,
         sortOrder: Int = nextDefaultSortOrder(),
         createdAt: Date = .now,
         updatedAt: Date = .now
@@ -425,11 +445,14 @@ final class PersistedHabit {
         self.recurrenceRaw = recurrence.rawToken
         self.anchorDate = anchorDate
         self.tag = tag
+        self.templateRaw = templateRaw
         self.priority = priority
         self.streakCount = streakCount
         self.lastCompletedAt = lastCompletedAt
         self.isArchived = isArchived
         self.anchorGoalID = anchorGoalID
+        self.isStreakBroken = isStreakBroken
+        self.restorationAvailable = restorationAvailable
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -448,16 +471,30 @@ final class PersistedHabit {
         set { priority = newValue?.rawValue }
     }
 
+    /// Typed accessor for `templateRaw`. Unknown / legacy values read as
+    /// "no template" so the display falls back to the derived cadence label.
+    var recurrenceTemplate: RecurrenceTemplate? {
+        get { templateRaw.flatMap(RecurrenceTemplate.init(rawValue:)) }
+        set { templateRaw = newValue?.rawValue }
+    }
+
     /// Cadence label for row meta strips ("EVERY DAY", "EVERY MONDAY").
     var cadenceLabel: String { recurrence.label }
+
+    /// Meta-strip label preferring the template's display name ("Weekdays",
+    /// "Mon, Wed, Fri") over raw day abbreviations. Falls back to the
+    /// rule-derived `cadenceLabel` for manual chip selections.
+    var cadenceDisplayLabel: String {
+        recurrenceTemplate?.rawValue ?? cadenceLabel
+    }
 
     /// Dashboard subtitle pairing cadence with the optional time anchor,
     /// e.g. "Every day · 9:00 PM". Falls back to the bare cadence when no
     /// time was captured.
     var cadenceSubtitle: String {
-        guard let anchorDate else { return cadenceLabel }
+        guard let anchorDate else { return cadenceDisplayLabel }
         let time = anchorDate.formatted(date: .omitted, time: .shortened)
-        return "\(cadenceLabel) · \(time)"
+        return "\(cadenceDisplayLabel) · \(time)"
     }
 
     /// `true` once the loop has been logged for the current calendar day.
@@ -491,9 +528,144 @@ final class PersistedHabit {
                 streakCount = 1
             }
             lastCompletedAt = now
+            // A fresh completion resolves any pending lapse: the broken
+            // banner clears and the streak restarts cleanly at 1. (Burning a
+            // task is the *only* path that preserves the old count — handled
+            // by the Rekindle sheet, not here.)
+            isStreakBroken = false
+            restorationAvailable = false
         }
         updatedAt = now
         syncAnchorGoalProgress(completed: willComplete)
+    }
+
+    // MARK: - Recurrence-gated completion
+
+    /// `true` when `date`'s weekday falls inside this routine's scheduled
+    /// window. Weekday numbering is `Calendar` 1=Sun…7=Sat to match
+    /// `RecurrenceRule.customDays`. Generic weekly (`.weekly(nil)`) has no
+    /// anchor day, so every day is a valid logging day.
+    func isScheduledDay(_ date: Date, calendar: Calendar = .current) -> Bool {
+        let wd = calendar.component(.weekday, from: date)
+        switch recurrence {
+        case .daily:
+            return true
+        case .weekdays:
+            return (2...6).contains(wd)
+        case .weekly(let weekday):
+            guard let weekday else { return true }
+            return wd == weekday
+        case .customDays(let days):
+            return days.contains(wd)
+        case .biweekly(let weekday):
+            guard isOnBiweeklyWeek(date, calendar: calendar) else { return false }
+            guard let weekday else { return true }
+            return wd == weekday
+        case .monthly(let day):
+            return calendar.component(.day, from: date) == day
+        }
+    }
+
+    /// Bi-weekly alternation anchor: the routine's first scheduled week.
+    /// "On" weeks are an even number of weeks away from the week containing
+    /// `anchorDate` (time-of-day anchor, when captured) or `createdAt`.
+    private func isOnBiweeklyWeek(_ date: Date, calendar: Calendar) -> Bool {
+        let anchor = anchorDate ?? createdAt
+        guard
+            let anchorWeek = calendar.dateInterval(of: .weekOfYear, for: anchor)?.start,
+            let dateWeek = calendar.dateInterval(of: .weekOfYear, for: date)?.start,
+            let weeks = calendar.dateComponents([.weekOfYear], from: anchorWeek, to: dateWeek).weekOfYear
+        else { return true }
+        return weeks.isMultiple(of: 2)
+    }
+
+    /// Validation gate fired by the UI *before* a new completion is committed.
+    /// Enforces two structural rules and returns `false` if either fails:
+    ///   1. Calendar-window alignment — `date` must be a scheduled day.
+    ///   2. Double-log protection — already logged this window. Daily /
+    ///      weekday / custom / monthly cadences lock once per calendar *day*
+    ///      (monthly only ever schedules one day per month, so per-day is
+    ///      per-window); weekly and bi-weekly cadences lock once per
+    ///      calendar *week*.
+    /// Reversing today's completion is a separate path (the caller checks
+    /// `isCompletedToday`) and is always allowed.
+    func isEligibleForCompletion(on date: Date = .now, calendar: Calendar = .current) -> Bool {
+        guard isScheduledDay(date, calendar: calendar) else { return false }
+        guard let last = lastCompletedAt else { return true }
+        switch recurrence {
+        case .weekly, .biweekly:
+            return !calendar.isDate(last, equalTo: date, toGranularity: .weekOfYear)
+        case .daily, .weekdays, .customDays, .monthly:
+            return !calendar.isDate(last, inSameDayAs: date)
+        }
+    }
+
+    /// Run during scene-phase activation. If a scheduled window elapsed since
+    /// the last completion, flag the streak as broken + restorable — but
+    /// preserve `streakCount` so the historical value can be locked back in
+    /// via the Rekindle sheet. Idempotent: a no-op once already flagged or
+    /// when there's no live streak to lose.
+    func checkStreakLapse(currentDate: Date = .now, calendar: Calendar = .current) {
+        guard !isStreakBroken else { return }
+        guard streakCount > 0, let last = lastCompletedAt else { return }
+        let startOfToday = calendar.startOfDay(for: currentDate)
+        let lastDay = calendar.startOfDay(for: last)
+        // Logged today already → nothing lapsed.
+        if calendar.isDate(lastDay, inSameDayAs: startOfToday) { return }
+        if didMissScheduledWindow(lastDay: lastDay, startOfToday: startOfToday, calendar: calendar) {
+            isStreakBroken = true
+            restorationAvailable = true
+            updatedAt = currentDate
+        }
+    }
+
+    /// `true` when at least one scheduled completion fell in the gap between
+    /// the last log and today and was missed.
+    private func didMissScheduledWindow(lastDay: Date, startOfToday: Date, calendar: Calendar) -> Bool {
+        // Generic weekly: once per week, any day. Lapsed only once a full
+        // week has been skipped (last log predates the start of last week).
+        if case .weekly(let weekday) = recurrence, weekday == nil {
+            guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: startOfToday)?.start,
+                  let prevWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart)
+            else { return false }
+            return lastDay < prevWeekStart
+        }
+        // Generic bi-weekly: once per "on" week, any day. Same shape as
+        // generic weekly but with a two-week cycle — lapsed only once an
+        // entire on-week has been skipped (the per-day walker below would
+        // misfire here, since every day of an on-week reads as scheduled
+        // while the window is still open until the week ends).
+        if case .biweekly(let weekday) = recurrence, weekday == nil {
+            guard let thisWeekStart = calendar.dateInterval(of: .weekOfYear, for: startOfToday)?.start,
+                  let prevCycleStart = calendar.date(byAdding: .weekOfYear, value: -2, to: thisWeekStart)
+            else { return false }
+            return lastDay < prevCycleStart
+        }
+        // Per-day cadences: walk back from yesterday to the day after the last
+        // log; any scheduled day in that span is a missed window. Capped to
+        // stay O(1) for pathological gaps.
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday) else { return false }
+        var cursor = yesterday
+        var guardrail = 0
+        while cursor > lastDay && guardrail < 60 {
+            if isScheduledDay(cursor, calendar: calendar) { return true }
+            guard let prev = calendar.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = prev
+            guardrail += 1
+        }
+        return false
+    }
+
+    /// Lock a broken streak back in place after the user burns a task. Clears
+    /// both restoration flags, preserves `streakCount`, and re-stamps the loop
+    /// as current (so it reads "completed today" and continues tomorrow).
+    /// Deliberately does NOT touch the anchor goal — a burn is a save, not a
+    /// routine completion.
+    func rekindleStreak(asOf now: Date = .now) {
+        isStreakBroken = false
+        restorationAvailable = false
+        lastCompletedAt = now
+        updatedAt = now
     }
 
     /// Keep the parent `PersistedGoal.currentValue` perfectly mirrored with

@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Avenor — Cinematic · 1080×1920</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#000; --canvas:#0A0A0C; --surface:#0E0E11;
+  --border:rgba(255,255,255,0.07); --border-soft:rgba(255,255,255,0.06);
+  --t1:rgba(255,255,255,0.92); --t2:rgba(255,255,255,0.45); --t3:rgba(255,255,255,0.25);
+  --mint:#6EE7A8;
+  --spring:cubic-bezier(0.34,1.56,0.64,1);
+  --smooth:cubic-bezier(0.16,1,0.3,1);
+  --glide:cubic-bezier(0.22,1,0.36,1);
+  --drift:cubic-bezier(0.45,0,0.55,1);
+  --inout:cubic-bezier(0.42,0,0.58,1);
+  --cut:cubic-bezier(0.76,0,0.24,1);
+  --ring-c:188.5;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;
+  font-family:'Inter',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+
+/* fit the 1080×1920 export frame into any viewport */
+.fit{position:fixed;inset:0;display:grid;place-items:center;background:#000;}
+.frame{position:relative;width:1080px;height:1920px;overflow:hidden;
+  transform-origin:center center;
+  background:radial-gradient(130% 110% at 50% 42%,#070708 0%,#000 72%);}
+
+.stage{position:absolute;inset:0;display:grid;place-items:center;}
+
+/* ambient mint glow behind phone */
+.glow{position:absolute;width:760px;height:760px;border-radius:50%;
+  background:radial-gradient(circle,rgba(110,231,168,0.16) 0%,rgba(110,231,168,0.05) 45%,transparent 70%);
+  filter:blur(40px);opacity:.05;animation:glowPulse 4s var(--drift) infinite;
+  transition:opacity .8s var(--smooth),transform .8s var(--smooth);pointer-events:none;}
+.glow.intense{opacity:.18;transform:scale(1.35);}
+@keyframes glowPulse{0%,100%{opacity:.04}50%{opacity:.09}}
+
+/* particles */
+.particles{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.p{position:absolute;bottom:-8px;width:3px;height:3px;border-radius:50%;background:#fff;opacity:0;
+  animation-name:rise;animation-timing-function:var(--drift);animation-iteration-count:infinite;will-change:transform,opacity;}
+@keyframes rise{
+  0%{transform:translateY(0) translateX(0);opacity:0}
+  12%{opacity:var(--po,.14)}88%{opacity:var(--po,.14)}
+  100%{transform:translateY(-1900px) translateX(var(--dx,20px));opacity:0}}
+
+/* ───────── transform wrapper chain (one property each) ───────── */
+.perspective{perspective:1700px;}
+.size{transform:scale(1.85);transform-style:preserve-3d;}       /* static enlargement for 1080 frame */
+
+.phone-slide{transition:transform 1.15s var(--glide);transform:translateX(0);transform-style:preserve-3d;}
+.phone-slide.exit-left{transform:translateX(-160%);transition-timing-function:var(--cut);transition-duration:1s;}
+.phone-slide.prep-right{transform:translateX(160%);transition:none;}
+
+.phone-scale{transition:transform 3.5s cubic-bezier(0.25,0.1,0.25,1);transform:scale(1);
+  transform-origin:center 35%;transform-style:preserve-3d;}
+.phone-scale.zoom{transform:scale(1.18);}
+.phone-scale.quick{transition:transform .8s var(--smooth);}
+
+.turn{transition:transform 1.15s var(--glide);transform:rotateY(0);transform-style:preserve-3d;}
+.turn.turn-away{transform:rotateY(-22deg);transition-timing-function:var(--cut);transition-duration:1s;}
+.turn.turn-prep{transform:rotateY(22deg);transition:none;}
+.turn.angle4{transform:rotateY(-12deg);transition-duration:2s;}
+
+.pitch{transition:transform 2s var(--smooth);transform:rotateX(0);transform-style:preserve-3d;}
+.pitch.angle{transform:rotateX(4deg);}
+
+.drift-y{animation:floatY 3.5s var(--drift) infinite;transform-style:preserve-3d;will-change:transform;}
+@keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.tilt-x{animation:tiltX 7s var(--drift) infinite alternate;transform-style:preserve-3d;will-change:transform;}
+@keyframes tiltX{from{transform:rotateX(1deg)}to{transform:rotateX(-1deg)}}
+.tilt-y{animation:tiltY 9s var(--drift) infinite alternate;transform-style:preserve-3d;will-change:transform;}
+@keyframes tiltY{from{transform:rotateY(-2deg)}to{transform:rotateY(2deg)}}
+
+/* ───────── phone body ───────── */
+.phone{position:relative;width:270px;height:560px;border-radius:44px;background:#000;
+  border:1px solid rgba(255,255,255,0.10);
+  box-shadow:0 50px 100px rgba(0,0,0,0.9),inset 0 1px 0 rgba(255,255,255,0.05);overflow:hidden;}
+.phone::before{content:"";position:absolute;inset:1px;border-radius:43px;
+  background:radial-gradient(140% 55% at 50% -8%,rgba(255,255,255,0.05),transparent 50%);pointer-events:none;z-index:6;}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:95px;height:26px;
+  background:#000;border-radius:14px;z-index:9;box-shadow:inset 0 0 0 .5px rgba(255,255,255,0.05);}
+.island::after{content:"";position:absolute;right:11px;top:50%;width:7px;height:7px;transform:translateY(-50%);
+  border-radius:50%;background:radial-gradient(circle at 35% 35%,#1b1b21,#000);}
+
+.screen{position:absolute;inset:0;border-radius:43px;overflow:hidden;background:var(--canvas);}
+.page{position:absolute;inset:0;padding:46px 14px 0;opacity:0;transition:opacity .4s var(--smooth);
+  display:flex;flex-direction:column;}
+.page.show{opacity:1;}
+
+/* shared type */
+.eyebrow{font-family:'Space Mono',monospace;font-weight:700;font-size:9px;letter-spacing:.14em;
+  text-transform:uppercase;color:rgba(255,255,255,0.25);}
+.sect{font-family:'Space Mono',monospace;font-weight:700;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:rgba(255,255,255,0.28);display:flex;gap:7px;align-items:baseline;}
+.sect .c{color:rgba(255,255,255,0.22);}
+.h-disp{font-weight:800;color:var(--t1);letter-spacing:-.02em;}
+.mono{font-family:'Space Mono',monospace;}
+
+/* reveal stagger */
+.reveal > .ri{opacity:0;transform:translateY(16px);
+  transition:opacity .5s var(--smooth),transform .5s var(--smooth);}
+.reveal.go > .ri{opacity:1;transform:translateY(0);transition-delay:calc(var(--i,0)*0.05s);}
+
+/* ═════════ GOALS (scene 1) ═════════ */
+#pageGoals{padding-top:50px;}
+.goals-h{font-size:34px;}
+.goals-meta{margin:2px 2px 22px;font-size:10px;color:var(--t2);}
+.routine-card{position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;padding:16px;display:flex;gap:12px;align-items:center;overflow:hidden;
+  transition:background .25s var(--smooth);}
+.routine-card.flash{background:rgba(110,231,168,0.06);}
+.routine-card::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:2px;background:var(--mint);border-radius:2px;}
+.rc-left{flex:1;min-width:0;padding-left:8px;}
+.rc-title{font-weight:600;font-size:17px;color:var(--t1);margin:7px 0 15px;letter-spacing:-.01em;}
+.week{display:flex;gap:5px;}
+.day{display:flex;flex-direction:column;align-items:center;gap:6px;width:13px;}
+.day .l{font-family:'Space Mono',monospace;font-size:8px;color:var(--t3);}
+.day .pip{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.15);}
+.day.on .pip{animation:pipPop .5s var(--spring) forwards;}
+@keyframes pipPop{0%{transform:scale(1);background:rgba(255,255,255,0.15);box-shadow:0 0 0 rgba(110,231,168,0)}
+  55%{transform:scale(1.4);background:var(--mint);box-shadow:0 0 8px var(--mint)}
+  100%{transform:scale(1);background:var(--mint);box-shadow:0 0 0 rgba(110,231,168,0)}}
+.streak{display:flex;flex-direction:column;align-items:center;gap:7px;}
+.ring-wrap{position:relative;width:64px;height:64px;will-change:transform;}
+.ring-wrap.pulse{animation:ringPulse .5s var(--spring);}
+@keyframes ringPulse{0%{transform:scale(1)}35%{transform:scale(1.18)}65%{transform:scale(.96)}100%{transform:scale(1)}}
+.halo{position:absolute;inset:0;border-radius:50%;box-shadow:0 0 0 0 rgba(110,231,168,0);pointer-events:none;}
+.halo.burst{animation:halo .42s var(--smooth);}
+@keyframes halo{0%{box-shadow:0 0 0 0 rgba(110,231,168,.55)}100%{box-shadow:0 0 0 30px rgba(110,231,168,0)}}
+.ring-wrap svg.ring{position:absolute;inset:0;transform:rotate(-90deg);}
+.ring-track{fill:none;stroke:rgba(255,255,255,0.08);stroke-width:4;}
+.ring-prog{fill:none;stroke:var(--mint);stroke-width:4;stroke-linecap:round;
+  stroke-dasharray:var(--ring-c);stroke-dashoffset:var(--ring-c);}
+.ring-prog.draw{animation:ringDraw 2s var(--inout) forwards;}
+@keyframes ringDraw{from{stroke-dashoffset:var(--ring-c)}to{stroke-dashoffset:0}}
+.ring-core{position:absolute;inset:0;display:grid;place-items:center;}
+.num-reel{position:relative;width:34px;height:26px;overflow:hidden;display:grid;place-items:center;}
+.num-reel span{position:absolute;font-weight:800;font-size:22px;color:var(--t1);letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;line-height:1;}
+.num-out{animation:nOut .25s var(--smooth) forwards;}
+.num-in{animation:nIn .25s var(--smooth) forwards;}
+@keyframes nOut{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-24px);opacity:0}}
+@keyframes nIn{0%{transform:translateY(24px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.big-check{position:absolute;inset:0;display:grid;place-items:center;opacity:0;pointer-events:none;}
+.big-check svg{width:30px;height:30px;color:var(--mint);}
+.big-check.show{animation:bigCheck 1.0s var(--spring);}
+@keyframes bigCheck{0%{opacity:0;transform:scale(.6)}25%{opacity:1;transform:scale(1)}
+  75%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+.streak-lbl{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--t3);}
+
+/* ═════════ OVERVIEW (scene 3) — compacted to fit, matches reference ═════════ */
+#pageOverview{padding:44px 14px 0;transition:opacity .4s var(--smooth),transform 1.25s var(--smooth);}
+#pageOverview.scrolled{transform:translateY(-108px);}
+.ov-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1px;}
+.ov-title{font-size:30px;letter-spacing:-.02em;}
+.gear{width:34px;height:34px;border-radius:50%;background:#161618;display:grid;place-items:center;
+  border:1px solid var(--border);flex:0 0 auto;}
+.gear svg{width:15px;height:15px;color:var(--t2);}
+.ov-date{font-family:'Space Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.05em;margin:2px 0 11px;}
+.capture{display:flex;align-items:center;gap:9px;background:var(--surface);
+  border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:11px 13px;margin-bottom:13px;}
+.capture .gt{font-family:'Space Mono',monospace;font-weight:700;font-size:14px;color:rgba(255,255,255,0.85);}
+.capture .ph{font-family:'Space Mono',monospace;font-size:12px;color:rgba(255,255,255,0.32);letter-spacing:.16em;}
+.cursor{width:2px;height:14px;background:#fff;margin-left:-3px;animation:blink .75s step-end infinite;}
+@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}
+.lbl-row{margin:0 2px 9px;}
+.week-cells{display:flex;gap:5px;margin-bottom:13px;}
+.wc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.wc .l{font-family:'Space Mono',monospace;font-size:8px;color:var(--t3);}
+.wc .cell{width:100%;aspect-ratio:1;border-radius:7px;border:.5px solid var(--border-soft);
+  display:grid;place-items:center;font-size:11px;color:var(--t2);font-weight:500;}
+.wc.today .cell{border-color:rgba(255,255,255,0.20);color:var(--t1);position:relative;}
+.wc.today .cell::after{content:"";position:absolute;bottom:4px;width:12px;height:2px;border-radius:1px;background:var(--mint);}
+.task{position:relative;background:var(--surface);border:1px solid var(--border-soft);
+  border-radius:10px;padding:9px 12px 9px 15px;margin-bottom:6px;overflow:hidden;}
+.task::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;background:var(--mint);border-radius:2px;}
+.task .meta{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:5px;}
+.task .row{display:flex;align-items:center;gap:10px;}
+.cbx{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--t3);flex:0 0 auto;}
+.task .tt{flex:1;font-weight:600;font-size:13.5px;color:var(--t1);}
+.chev{color:var(--t3);font-size:11px;}
+.metric{position:relative;background:var(--surface);border:1px solid var(--border-soft);
+  border-radius:10px;padding:11px 12px 12px 15px;overflow:hidden;}
+.metric::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;background:var(--mint);border-radius:2px;}
+.metric .top{display:flex;justify-content:space-between;align-items:baseline;}
+.metric .mt{font-weight:600;font-size:13.5px;color:var(--t1);}
+.metric .pct{font-family:'Space Mono',monospace;font-size:12px;color:var(--t1);}
+.metric .mm{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin:5px 0 8px;}
+.bar{height:2px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;}
+.bar i{display:block;height:100%;width:1.5%;background:var(--mint);}
+.habit{position:relative;background:var(--surface);border:1px solid var(--border-soft);
+  border-radius:10px;padding:11px 12px 11px 15px;display:flex;align-items:center;gap:12px;overflow:hidden;}
+.habit::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:2px;background:var(--mint);border-radius:2px;}
+.habit .info{flex:1;min-width:0;}
+.habit .hmeta{font-family:'Space Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);}
+.habit .ht{font-weight:600;font-size:13.5px;color:var(--t1);margin-top:4px;}
+.hdots{display:flex;gap:4px;margin-top:8px;}
+.hdots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.16);}
+.hdots i.on{background:var(--mint);}
+.hstreak{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto;}
+.hnum{display:flex;align-items:center;gap:4px;font-weight:800;font-size:20px;color:var(--t1);letter-spacing:-.02em;}
+.hnum svg{width:13px;height:15px;color:var(--mint);}
+.hlbl{font-family:'Space Mono',monospace;font-size:7.5px;letter-spacing:.12em;color:var(--t3);}
+
+/* ═════════ CALENDAR (scene 4) ═════════ */
+#pageCalendar{padding:42px 14px 0;}
+.nav-title{text-align:center;font-weight:600;font-size:18px;color:var(--t1);margin-bottom:16px;}
+.cal-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:18px;}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.cal-head .mo{font-weight:700;font-size:18px;color:var(--t1);}
+.cal-nav{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--t2);
+  background:#141417;border:1px solid var(--border-soft);font-size:13px;}
+.dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:8px;}
+.dow span{text-align:center;font-family:'Space Mono',monospace;font-size:8px;color:var(--t3);letter-spacing:.06em;}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+.gc{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:13px;color:var(--t1);font-weight:500;position:relative;}
+.gc.dim{color:rgba(255,255,255,0.20);}
+.gc .dots{display:flex;gap:2px;height:4px;}
+.gc .dots i{width:3px;height:3px;border-radius:50%;background:var(--mint);}
+.gc.today .n{position:relative;}
+.gc.today .n::after{content:"";position:absolute;left:50%;bottom:-3px;transform:translateX(-50%);
+  width:13px;height:2px;border-radius:1px;background:var(--mint);}
+.cal-meta{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t3);margin:0 2px 12px;}
+
+/* tab bar */
+.tabbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:7;
+  display:flex;gap:2px;background:rgba(22,22,24,0.92);border:1px solid var(--border);
+  border-radius:24px;padding:7px 8px;backdrop-filter:blur(8px);}
+.tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 9px;border-radius:16px;
+  transition:background .35s var(--smooth);}
+.tab svg{width:17px;height:17px;color:var(--t2);transition:color .35s var(--smooth);}
+.tab span{font-size:8.5px;color:var(--t2);font-weight:500;transition:color .35s var(--smooth);}
+.tab.active{background:rgba(255,255,255,0.06);}
+.tab.active svg,.tab.active span{color:var(--t1);}
+
+/* ═════════ TEXT OVERLAYS (sized for 1080 width) ═════════ */
+.text-layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;pointer-events:none;}
+.line{text-align:center;}
+.word{display:inline-block;opacity:0;transform:translateY(22px);margin:0 .16em;
+  transition:opacity .4s var(--smooth),transform .4s var(--smooth);}
+.line.in .word{opacity:1;transform:translateY(0);transition-delay:calc(var(--i,0)*.08s);}
+.line.out .word{opacity:0;transform:translateY(-16px);}
+
+.s2{z-index:22;}
+.s2 .line{font-weight:900;font-size:74px;letter-spacing:-.03em;line-height:1.04;color:#fff;}
+.s2 .line.dim .word{color:var(--t2);}
+
+.never{position:absolute;left:50%;top:230px;transform:translateX(-50%) translateY(14px);z-index:36;
+  font-weight:700;font-size:46px;color:#fff;opacity:0;
+  transition:opacity .6s var(--smooth),transform .6s var(--smooth);}
+.never.show{opacity:.95;transform:translateX(-50%) translateY(0);}
+.never.out{opacity:0;transform:translateX(-50%) translateY(-14px);}
+
+.s5{z-index:36;gap:16px;}
+.s5 .line.big{font-weight:900;font-size:82px;letter-spacing:-.03em;color:#fff;}
+.s5 .line.big.dim .word{color:rgba(255,255,255,0.5);}
+.s5 .url{font-family:'Space Mono',monospace;font-weight:700;font-size:30px;letter-spacing:.08em;
+  color:rgba(255,255,255,0.45);opacity:0;transform:translateY(14px);
+  transition:opacity .5s var(--smooth),transform .5s var(--smooth);margin-top:10px;}
+.s5 .url.in{opacity:1;transform:translateY(0);}
+
+/* scene-5 scrim so text reads cleanly over the phone */
+.scrim{position:absolute;inset:0;background:rgba(3,4,5,0.66);opacity:0;z-index:30;pointer-events:none;
+  transition:opacity .7s var(--smooth);}
+.scrim.on{opacity:1;}
+
+/* blackout */
+.blackout{position:absolute;inset:0;background:#000;opacity:0;z-index:50;pointer-events:none;
+  transition:opacity .8s var(--smooth);}
+.blackout.on{opacity:1;}
+.hide{display:none!important;}
+</style>
+</head>
+<body>
+<div class="fit">
+<div class="frame" id="frame">
+  <div class="stage">
+    <div class="glow" id="glow"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="perspective">
+      <div class="size">
+        <div class="phone-slide" id="slide">
+          <div class="phone-scale" id="scale">
+            <div class="turn" id="turn">
+              <div class="pitch" id="pitch">
+                <div class="drift-y">
+                  <div class="tilt-x">
+                    <div class="tilt-y">
+                      <div class="phone">
+                        <div class="island"></div>
+                        <div class="screen">
+
+                          <!-- GOALS (Scene 1) -->
+                          <div class="page show" id="pageGoals">
+                            <div class="h-disp goals-h">Goals</div>
+                            <div class="goals-meta mono">1 GOAL · 2 ROUTINES</div>
+                            <div class="sect" style="margin:0 2px 14px;">Standalone Routines <span class="c">·</span><span class="c">1</span></div>
+                            <div class="routine-card" id="routineCard">
+                              <div class="rc-left">
+                                <div class="eyebrow">Every Day</div>
+                                <div class="rc-title">Walk a Mile</div>
+                                <div class="week" id="week">
+                                  <div class="day"><span class="l">S</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">M</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">T</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">W</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">T</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">F</span><span class="pip"></span></div>
+                                  <div class="day"><span class="l">S</span><span class="pip"></span></div>
+                                </div>
+                              </div>
+                              <div class="streak">
+                                <div class="ring-wrap" id="ringWrap">
+                                  <div class="halo" id="halo"></div>
+                                  <svg class="ring" viewBox="0 0 64 64">
+                                    <circle class="ring-track" cx="32" cy="32" r="30"></circle>
+                                    <circle class="ring-prog" id="ringProg" cx="32" cy="32" r="30"></circle>
+                                  </svg>
+                                  <div class="ring-core"><div class="num-reel" id="reel"><span>0</span></div></div>
+                                  <div class="big-check" id="bigCheck">
+                                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5"
+                                      stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                  </div>
+                                </div>
+                                <div class="streak-lbl">Day Streak</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- OVERVIEW (Scene 3) -->
+                          <div class="page reveal" id="pageOverview">
+                            <div class="ov-head ri" style="--i:0">
+                              <div class="h-disp ov-title">COMMAND</div>
+                              <div class="gear">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                  <circle cx="12" cy="12" r="3"></circle>
+                                  <path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 7 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H1a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 2.6 7a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H7a1.6 1.6 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V7a1.6 1.6 0 0 0 1.5 1H23a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"></path>
+                                </svg>
+                              </div>
+                            </div>
+                            <div class="ov-date mono ri" style="--i:1">JUN 6, 2026 · 4 OPEN</div>
+                            <div class="capture ri" style="--i:2">
+                              <span class="gt">&gt;</span><span class="ph">CAPTURE INTENT…</span><span class="cursor"></span>
+                            </div>
+                            <div class="sect lbl-row ri" style="--i:3">This Week</div>
+                            <div class="week-cells ri" style="--i:4">
+                              <div class="wc"><span class="l">S</span><div class="cell">31</div></div>
+                              <div class="wc"><span class="l">M</span><div class="cell">1</div></div>
+                              <div class="wc"><span class="l">T</span><div class="cell">2</div></div>
+                              <div class="wc"><span class="l">W</span><div class="cell">3</div></div>
+                              <div class="wc"><span class="l">T</span><div class="cell">4</div></div>
+                              <div class="wc"><span class="l">F</span><div class="cell">5</div></div>
+                              <div class="wc today"><span class="l">S</span><div class="cell">6</div></div>
+                            </div>
+                            <div class="sect lbl-row ri" style="--i:5">Due Today <span class="c">·</span><span class="c">3</span></div>
+                            <div class="task ri" style="--i:6">
+                              <div class="meta">TODO · DUE TODAY AT 3:00 PM</div>
+                              <div class="row"><span class="cbx"></span><span class="tt">Call John</span><span class="chev">⌄</span></div>
+                            </div>
+                            <div class="task ri" style="--i:7">
+                              <div class="meta">TODO · DUE TODAY AT 7:00 PM</div>
+                              <div class="row"><span class="cbx"></span><span class="tt">Gym</span><span class="chev">⌄</span></div>
+                            </div>
+                            <div class="task ri" style="--i:8">
+                              <div class="meta">TODO · DUE TODAY AT 9:00 PM</div>
+                              <div class="row"><span class="cbx"></span><span class="tt">Dinner with Team</span><span class="chev">⌄</span></div>
+                            </div>
+                            <div class="sect lbl-row ri" style="--i:9;margin-top:5px;">Active Metrics <span class="c">·</span><span class="c">1</span></div>
+                            <div class="metric ri" style="--i:10">
+                              <div class="top"><span class="mt">Read Romeo &amp; Juliet</span><span class="pct">0%</span></div>
+                              <div class="mm">Goal · 1 Pages / 300 Pages</div>
+                              <div class="bar"><i></i></div>
+                            </div>
+                            <div class="sect lbl-row ri" style="--i:11;margin-top:18px;">Today's Routine <span class="c">·</span><span class="c">1</span></div>
+                            <div class="habit ri" style="--i:12">
+                              <div class="info">
+                                <div class="hmeta">ROUTINE · EVERY DAY</div>
+                                <div class="ht">Walk a Mile</div>
+                                <div class="hdots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+                              </div>
+                              <div class="hstreak">
+                                <div class="hnum">8<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c4 0 7-2.7 7-6.5 0-2.4-1.2-4.3-2.5-6-.3 1.2-1 2-1.8 2 .6-2.4-.4-5.3-2.7-7.5-.5 2.3-2 3.3-3.2 4.7C7.3 11 6 12.8 6 15.5 6 19.3 8 23 12 23z"/></svg></div>
+                                <div class="hlbl">DAY STREAK</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- CALENDAR (Scene 4) -->
+                          <div class="page reveal" id="pageCalendar">
+                            <div class="nav-title ri" style="--i:0">Calendar</div>
+                            <div class="cal-card ri" style="--i:1">
+                              <div class="cal-head">
+                                <div class="cal-nav">‹</div>
+                                <div class="mo">June 2026</div>
+                                <div class="cal-nav">›</div>
+                              </div>
+                              <div class="dow"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
+                              <div class="grid" id="calGrid"></div>
+                            </div>
+                            <div class="cal-meta ri" style="--i:2">Saturday, Jun 6 · 3 Tasks</div>
+                            <div class="task ri" style="--i:3">
+                              <div class="meta">TODO · 9:00 PM</div>
+                              <div class="row"><span class="cbx"></span><span class="tt">Dinner with Team</span><span class="chev">⌄</span></div>
+                            </div>
+                            <div class="task ri" style="--i:4">
+                              <div class="meta">TODO · 3:00 PM</div>
+                              <div class="row"><span class="cbx"></span><span class="tt">Call John</span><span class="chev">⌄</span></div>
+                            </div>
+                          </div>
+
+                          <!-- tab bar -->
+                          <div class="tabbar" id="tabbar">
+                            <div class="tab active" data-tab="overview">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                              <span>Overview</span>
+                            </div>
+                            <div class="tab" data-tab="tasks">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/></svg>
+                              <span>Tasks</span>
+                            </div>
+                            <div class="tab" data-tab="notes">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9l5 5v13H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+                              <span>Notes</span>
+                            </div>
+                            <div class="tab" data-tab="goals">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+                              <span>Goals</span>
+                            </div>
+                            <div class="tab" data-tab="calendar">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                              <span>Calendar</span>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- overlays -->
+    <div class="text-layer s2 hide" id="s2">
+      <div class="line" id="s2l1"></div>
+      <div class="line dim" id="s2l2"></div>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+    <div class="never" id="never">never miss a day.</div>
+
+    <div class="text-layer s5 hide" id="s5">
+      <div class="line big" id="s5l1"></div>
+      <div class="line big dim" id="s5l2"></div>
+      <div class="url" id="s5url">avenorus.app</div>
+    </div>
+
+    <div class="blackout" id="blackout"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const frame=$('frame');
+const slide=$('slide'), scale=$('scale'), turn=$('turn'), pitch=$('pitch'), glow=$('glow');
+const pageGoals=$('pageGoals'), pageOverview=$('pageOverview'), pageCalendar=$('pageCalendar');
+const ringProg=$('ringProg'), reel=$('reel'), ringWrap=$('ringWrap'), halo=$('halo');
+const routineCard=$('routineCard'), bigCheck=$('bigCheck'), week=$('week');
+const days=[...week.querySelectorAll('.day')];
+const s2=$('s2'), s2l1=$('s2l1'), s2l2=$('s2l2');
+const never=$('never'), s5=$('s5'), s5l1=$('s5l1'), s5l2=$('s5l2'), s5url=$('s5url');
+const scrim=$('scrim'), blackout=$('blackout');
+
+let timers=[], countId=null;
+const after=(ms,fn)=>timers.push(setTimeout(fn,ms));
+const clearAll=()=>{timers.forEach(clearTimeout);timers=[];if(countId){clearInterval(countId);countId=null;}};
+const reflow=el=>void el.offsetWidth;
+
+/* fit 1080×1920 frame into viewport */
+function fit(){
+  const s=Math.min(window.innerWidth/1080, window.innerHeight/1920);
+  frame.style.transform=`scale(${s})`;
+}
+window.addEventListener('resize',fit);
+
+/* ---------- setup ---------- */
+function buildParticles(){
+  const box=$('particles');
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');p.className='p';
+    const dur=20+Math.random()*18, delay=-Math.random()*dur;
+    p.style.left=(5+Math.random()*90)+'%';
+    p.style.setProperty('--po',(0.08+Math.random()*0.10).toFixed(2));
+    p.style.setProperty('--dx',(Math.random()*70-35).toFixed(0)+'px');
+    p.style.animationDuration=dur+'s';p.style.animationDelay=delay+'s';
+    box.appendChild(p);
+  }
+}
+function buildCalendar(){
+  const grid=$('calGrid'), cells=[];
+  cells.push({n:31,dim:true});
+  for(let d=1;d<=30;d++)cells.push({n:d,dim:false});
+  for(let d=1;d<=11;d++)cells.push({n:d,dim:true});
+  cells.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='gc'+(c.dim?' dim':'');
+    let dots='<div class="dots"></div>';
+    if(!c.dim&&c.n===6){el.classList.add('today');dots='<div class="dots"><i></i><i></i><i></i></div>';}
+    else if(!c.dim&&c.n===7){dots='<div class="dots"><i></i></div>';}
+    el.innerHTML=`<span class="n">${c.n}</span>${dots}`;
+    grid.appendChild(el);
+  });
+}
+function splitWords(el,text){
+  el.innerHTML='';
+  text.split(' ').forEach((w,i)=>{
+    const s=document.createElement('span');s.className='word';s.style.setProperty('--i',i);
+    s.textContent=w;el.appendChild(s);
+  });
+}
+
+const setNum=n=>{reel.innerHTML=`<span>${n}</span>`;};
+function flip(from,to){
+  reel.innerHTML=`<span class="num-out">${from}</span><span class="num-in">${to}</span>`;
+  after(260,()=>setNum(to));
+}
+
+function resetAll(){
+  clearAll();
+  slide.className='phone-slide';
+  scale.className='phone-scale';
+  turn.className='turn';
+  pitch.className='pitch';
+  glow.classList.remove('intense');
+  scrim.classList.remove('on');
+
+  pageGoals.classList.add('show');
+  pageOverview.classList.remove('show','go','scrolled');
+  pageCalendar.classList.remove('show','go');
+
+  ringProg.classList.remove('draw');reflow(ringProg);
+  ringWrap.classList.remove('pulse');halo.classList.remove('burst');
+  routineCard.classList.remove('flash');bigCheck.classList.remove('show');
+  days.forEach(d=>d.classList.remove('on'));
+  setNum(0);
+
+  s2.classList.add('hide');s2l1.classList.remove('in','out');s2l2.classList.remove('in','out');
+  never.classList.remove('show','out');
+  s5.classList.add('hide');s5l1.classList.remove('in','out');s5l2.classList.remove('in','out');s5url.classList.remove('in');
+}
+
+/* ════════ MASTER TIMELINE (~26.5s loop) ════════ */
+function run(){
+  resetAll();
+  requestAnimationFrame(()=>blackout.classList.remove('on'));
+
+  /* ── SCENE 1 · Habit streak (0–6.5s) ── */
+  ringProg.classList.add('draw');
+  let n=0; setNum(0);
+  countId=setInterval(()=>{ n++; setNum(n); if(n>=7){clearInterval(countId);countId=null;} },280);
+  for(let i=0;i<7;i++) after(i*200+150,()=>days[i].classList.add('on'));
+
+  after(2500,()=>{ ringWrap.classList.add('pulse'); halo.classList.add('burst'); routineCard.classList.add('flash'); });
+  after(2950,()=>routineCard.classList.remove('flash'));
+  after(2600,()=>flip(7,8));
+  after(3000,()=>bigCheck.classList.add('show'));
+  after(4000,()=>bigCheck.classList.remove('show'));   // "8" then a shorter hold before Scene 2
+
+  /* ── SCENE 2 · Text reveal (6.5–10.5s) ── */
+  after(6500,()=>{
+    slide.classList.add('exit-left');
+    turn.classList.add('turn-away');
+    s2.classList.remove('hide');
+    splitWords(s2l1,'achieve your goals.');
+    splitWords(s2l2,'build better habits.');
+    requestAnimationFrame(()=>s2l1.classList.add('in'));
+  });
+  after(6650,()=>s2l2.classList.add('in'));
+  after(9600,()=>{ s2l1.classList.add('out'); s2l2.classList.add('out'); });
+
+  /* prep Scene 3 while phone is fully off-screen (clipped by frame overflow) */
+  after(10250,()=>{
+    pageGoals.classList.remove('show');
+    pageOverview.classList.add('show');
+    slide.classList.remove('exit-left'); slide.classList.add('prep-right');
+    turn.classList.remove('turn-away');  turn.classList.add('turn-prep');
+    reflow(slide);
+  });
+
+  /* ── SCENE 3 · Overview glides in (10.5–16.5s) ── */
+  after(10500,()=>{
+    s2.classList.add('hide');
+    slide.classList.remove('prep-right');   // 1.15s smooth glide from +160% → 0
+    turn.classList.remove('turn-prep');     // turns to face you over 1.15s
+  });
+  after(11050,()=>pageOverview.classList.add('go'));   // content settles in as it arrives
+  after(13700,()=>pageOverview.classList.add('scrolled'));  // glide down to reveal Today's Routine habit
+
+  /* ── SCENE 4 · Calendar + camera push (16.5–22.5s) ── */
+  after(16500,()=>{
+    pageOverview.classList.remove('show','go');
+    pageCalendar.classList.add('show');
+  });
+  after(16620,()=>pageCalendar.classList.add('go'));
+  after(16750,()=>{
+    scale.classList.add('zoom');
+    turn.classList.add('angle4');
+    pitch.classList.add('angle');
+    glow.classList.add('intense');
+  });
+  after(18500,()=>{ never.textContent='never miss a day.'; never.classList.add('show'); });
+
+  /* ── SCENE 5 · Close (22.5–26.5s) ── */
+  after(22500,()=>{
+    scale.classList.add('quick'); scale.classList.remove('zoom');
+    turn.classList.remove('angle4');
+    pitch.classList.remove('angle');
+    glow.classList.remove('intense');
+    never.classList.add('out');
+    scrim.classList.add('on');               // dim the phone so text reads clearly
+    s5.classList.remove('hide');
+    splitWords(s5l1,'one app.');
+    splitWords(s5l2,'everything organized.');
+    requestAnimationFrame(()=>s5l1.classList.add('in'));
+  });
+  after(23300,()=>s5l2.classList.add('in'));
+  after(24200,()=>s5url.classList.add('in'));
+  after(25700,()=>blackout.classList.add('on'));
+  after(26500,run);
+}
+
+/* boot */
+fit();
+buildParticles();
+buildCalendar();
+window.addEventListener('load',()=>{ fit(); requestAnimationFrame(run); });
+</script>
+</body>
+</html>

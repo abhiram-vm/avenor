@@ -275,6 +275,12 @@ struct AddGoalSheet: View {
     @FocusState private var routineFocused: Bool
     @State private var routineRecurrence: RecurrenceRule = .daily
 
+    // Smart Recurrence Templates. `selectedTemplate` survives only as long
+    // as the rule it applied — any manual chip/pill mutation detaches it, so
+    // a persisted template label can never disagree with the actual cadence.
+    @State private var showTemplateBrowser = false
+    @State private var selectedTemplate: RecurrenceTemplate? = nil
+
     // Single-letter day tokens, ordered Mon→Sun. `num` follows
     // Calendar.current weekday numbering (1=Sun…7=Sat); `letter` is the
     // absolute first letter of the day name.
@@ -371,6 +377,12 @@ struct AddGoalSheet: View {
         .preferredColorScheme(p.colorScheme)
         .tint(p.controlTint)
         .onAppear { draft.unit = currentUnit }
+        .sheet(isPresented: $showTemplateBrowser) {
+            RecurrenceTemplateSheet(selected: selectedTemplate) { template in
+                apply(template)
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: Step 1 — Goal scroll content
@@ -472,23 +484,43 @@ struct AddGoalSheet: View {
                         isSelected: isProfile(.daily),
                         palette: p
                     ) {
-                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .daily }
+                        withAnimation(DesignTokens.Motion.snappy) { setManualRecurrence(.daily) }
                     }
                     KineticPill(
                         title: "Weekdays",
                         isSelected: isProfile(.weekdays),
                         palette: p
                     ) {
-                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .weekdays }
+                        withAnimation(DesignTokens.Motion.snappy) { setManualRecurrence(.weekdays) }
                     }
                     KineticPill(
                         title: "Weekends",
                         isSelected: isProfile(.customDays([1, 7])),
                         palette: p
                     ) {
-                        withAnimation(DesignTokens.Motion.snappy) { routineRecurrence = .customDays([1, 7]) }
+                        withAnimation(DesignTokens.Motion.snappy) { setManualRecurrence(.customDays([1, 7])) }
                     }
                 }
+
+                // Quick templates — browse pre-built patterns instead of
+                // hand-picking chips. Sits directly above the day matrix.
+                HStack(spacing: 8) {
+                    SectionLabel("Quick Templates", palette: p)
+                    Spacer(minLength: 0)
+                    Button {
+                        AppHaptic.tap()
+                        showTemplateBrowser = true
+                    } label: {
+                        Text(selectedTemplate.map { "\($0.rawValue) →" } ?? "Browse →")
+                            .font(.system(size: 12, weight: .semibold, design: p.fontDesign))
+                            .tracking(p.microTracking)
+                            .foregroundStyle(p.accent)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Browse recurrence templates")
+                }
+                .padding(.top, 2)
 
                 // Single-letter day matrix (M T W T F S S)
                 HStack(spacing: 8) {
@@ -507,31 +539,68 @@ struct AddGoalSheet: View {
         }
     }
 
+    // MARK: Template application
+
+    /// Apply a browsed template: the rule lands on the chip matrix with the
+    /// overshooting spring so the chips visibly snap to their new state, and
+    /// the template sticks around for the routine card's meta label.
+    private func apply(_ template: RecurrenceTemplate) {
+        withAnimation(DesignTokens.Motion.springy) {
+            routineRecurrence = template.rule
+            selectedTemplate = template
+        }
+    }
+
+    /// Manual profile-pill selection — detaches any applied template so the
+    /// persisted label always reflects the live rule.
+    private func setManualRecurrence(_ rule: RecurrenceRule) {
+        routineRecurrence = rule
+        selectedTemplate = nil
+    }
+
     // MARK: Recurrence ⇄ weekday-set bridging
 
     /// The set of weekday numbers (1=Sun…7=Sat) currently active for the
-    /// selected recurrence rule. Drives the single-letter pill fills.
+    /// selected recurrence rule. Drives the single-letter pill fills. The
+    /// two non-weekly cadences (bi-weekly / monthly) return empty — the
+    /// seven-chip matrix can't express them, so no chip lights up and the
+    /// quick-templates row carries the selection feedback instead.
     private var selectedWeekdays: Set<Int> {
         switch routineRecurrence {
         case .daily:                 return [1, 2, 3, 4, 5, 6, 7]
         case .weekdays:              return [2, 3, 4, 5, 6]
-        case .weekly(let wd):        return wd.map { [$0] } ?? []
-        case .customDays(let days):  return days
+        case .weekly(let wd):        return wd.map { Set([$0]) } ?? []
+        case .customDays(let days):  return Set(days)
+        case .biweekly, .monthly:    return []
         }
     }
 
     /// Whether the live rule matches a named profile (compared by the set of
     /// days it schedules, so a hand-built {1,7} reads as "Weekends" too).
+    /// Bi-weekly / monthly never match a profile — their (empty) day sets
+    /// are not their schedule.
     private func isProfile(_ rule: RecurrenceRule) -> Bool {
-        daySet(for: routineRecurrence) == daySet(for: rule)
+        if case .biweekly = routineRecurrence { return false }
+        if case .monthly = routineRecurrence { return false }
+        return daySet(for: routineRecurrence) == daySet(for: rule)
     }
 
     private func daySet(for rule: RecurrenceRule) -> Set<Int> {
         switch rule {
         case .daily:                 return [1, 2, 3, 4, 5, 6, 7]
         case .weekdays:              return [2, 3, 4, 5, 6]
-        case .weekly(let wd):        return wd.map { [$0] } ?? []
-        case .customDays(let days):  return days
+        case .weekly(let wd):        return wd.map { Set([$0]) } ?? []
+        case .customDays(let days):  return Set(days)
+        case .biweekly, .monthly:    return []
+        }
+    }
+
+    /// CTA gate: a weekday-based rule needs at least one lit chip; the
+    /// non-weekly template cadences are always schedulable.
+    private var recurrenceValid: Bool {
+        switch routineRecurrence {
+        case .biweekly, .monthly: return true
+        default:                  return !selectedWeekdays.isEmpty
         }
     }
 
@@ -539,6 +608,12 @@ struct AddGoalSheet: View {
     /// all 7 → `.daily`, exactly Mon–Fri → `.weekdays`, a single day →
     /// `.weekly`, anything else → `.customDays`.
     private func toggleWeekday(_ num: Int) {
+        // A chip tap is a manual override — detach any applied template so
+        // the persisted label can never disagree with the live rule. (For
+        // bi-weekly / monthly this also re-enters weekday-land from an
+        // empty chip set, which is exactly the override the user asked for.)
+        selectedTemplate = nil
+
         var days = selectedWeekdays
         if days.contains(num) { days.remove(num) } else { days.insert(num) }
 
@@ -551,7 +626,7 @@ struct AddGoalSheet: View {
         } else if days.isEmpty {
             routineRecurrence = .customDays([])
         } else {
-            routineRecurrence = .customDays(days)
+            routineRecurrence = .customDays(Array(days))
         }
     }
 
@@ -559,7 +634,7 @@ struct AddGoalSheet: View {
         let p = theme.palette
         return VStack(spacing: 8) {
             Rectangle().fill(p.hairline).frame(height: 0.5)
-            PrimaryActionButton(title: "Confirm", enabled: !selectedWeekdays.isEmpty, palette: p) {
+            PrimaryActionButton(title: "Confirm", enabled: recurrenceValid, palette: p) {
                 commitBoth()
             }
             .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
@@ -615,6 +690,7 @@ struct AddGoalSheet: View {
         let habit = PersistedHabit(
             title: title.isEmpty ? "Daily progress" : title,
             recurrence: routineRecurrence,
+            templateRaw: selectedTemplate?.rawValue,
             anchorGoalID: goal.id
         )
         modelContext.insert(habit)

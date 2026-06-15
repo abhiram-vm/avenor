@@ -56,10 +56,15 @@ enum RecurrenceRule: Equatable, Hashable {
     case weekly(weekday: Int?)
     /// "every weekday" — Monday through Friday.
     case weekdays
-    /// An explicit set of weekdays (1=Sun…7=Sat). Backs the multi-day
-    /// selection matrix (e.g. weekend = {1,7}, or any custom Mon/Wed/Fri
-    /// combination). Empty set is treated as "no schedule".
-    case customDays(Set<Int>)
+    /// "every other week" — `weekday` is 1 (Sun)…7 (Sat). `nil` = generic
+    /// bi-weekly cadence with no specific anchor day. Template-only; the
+    /// chip matrix can't express it, so it carries its schedule here.
+    case biweekly(weekday: Int?)
+    /// "1st of each month" — `day` is the day-of-month (1…31). Template-only.
+    case monthly(day: Int)
+    /// An explicit set of weekdays (1=Sun…7=Sat), e.g. weekends [1, 7] or
+    /// Mon/Wed/Fri [2, 4, 6]. Same numbering convention as the chip matrix.
+    case customDays([Int])
 
     /// Human-facing label for chips and row meta strips.
     var label: String {
@@ -69,11 +74,15 @@ enum RecurrenceRule: Equatable, Hashable {
         case .weekly(let wd):
             guard let wd, let name = Self.weekdayName(wd) else { return "Weekly" }
             return "Every \(name)"
+        case .biweekly(let wd):
+            guard let wd, let name = Self.weekdayName(wd) else { return "Every other week" }
+            return "Every other \(name)"
+        case .monthly(let day):
+            return "Monthly on day \(day)"
         case .customDays(let days):
-            if days == [1, 7] { return "Weekends" }
-            let ordered = [2, 3, 4, 5, 6, 7, 1].filter { days.contains($0) }
-            let abbrev = ordered.compactMap { Self.weekdayAbbrev($0) }
-            return abbrev.isEmpty ? "Custom" : abbrev.joined(separator: " · ")
+            guard !days.isEmpty else { return "Custom" }
+            let names = days.sorted().compactMap { Self.weekdayName($0).map { String($0.prefix(3)) } }
+            return names.isEmpty ? "Custom" : names.joined(separator: ", ")
         }
     }
 
@@ -83,8 +92,10 @@ enum RecurrenceRule: Equatable, Hashable {
         case .daily:    return "daily"
         case .weekdays: return "weekdays"
         case .weekly(let wd): return wd.map { "weekly:\($0)" } ?? "weekly"
+        case .biweekly(let wd): return wd.map { "biweekly:\($0)" } ?? "biweekly"
+        case .monthly(let day): return "monthly:\(day)"
         case .customDays(let days):
-            return "days:" + days.sorted().map(String.init).joined(separator: ",")
+            return "days:" + days.map(String.init).joined(separator: ",")
         }
     }
 
@@ -93,17 +104,23 @@ enum RecurrenceRule: Equatable, Hashable {
         case "daily":    self = .daily
         case "weekdays": self = .weekdays
         case "weekly":   self = .weekly(weekday: nil)
+        case "biweekly": self = .biweekly(weekday: nil)
         default:
             if rawToken.hasPrefix("weekly:"),
                let wd = Int(rawToken.dropFirst("weekly:".count)) {
                 self = .weekly(weekday: wd)
+            } else if rawToken.hasPrefix("biweekly:"),
+                      let wd = Int(rawToken.dropFirst("biweekly:".count)) {
+                self = .biweekly(weekday: wd)
+            } else if rawToken.hasPrefix("monthly:"),
+                      let day = Int(rawToken.dropFirst("monthly:".count)) {
+                self = .monthly(day: day)
             } else if rawToken.hasPrefix("days:") {
-                let nums = rawToken.dropFirst("days:".count)
+                let days = rawToken.dropFirst("days:".count)
                     .split(separator: ",")
                     .compactMap { Int($0) }
-                    .filter { (1...7).contains($0) }
-                guard !nums.isEmpty else { return nil }
-                self = .customDays(Set(nums))
+                guard !days.isEmpty else { return nil }
+                self = .customDays(days)
             } else {
                 return nil
             }
@@ -118,15 +135,6 @@ enum RecurrenceRule: Equatable, Hashable {
         case 7: return "Saturday";  default: return nil
         }
     }
-
-    static func weekdayAbbrev(_ wd: Int) -> String? {
-        switch wd {
-        case 1: return "Sun";   case 2: return "Mon"
-        case 3: return "Tue";   case 4: return "Wed"
-        case 5: return "Thu";   case 6: return "Fri"
-        case 7: return "Sat";   default: return nil
-        }
-    }
 }
 
 // MARK: - CaptureIntent
@@ -136,6 +144,11 @@ enum CaptureIntent: Equatable {
     /// date or time token was recognized. `priority` is `1`..`3` for
     /// `!!!`/`!!`/`!` respectively (1 = highest), or `nil`.
     case todo(title: String, dueDate: Date?, priority: Int?)
+
+    /// Like `.todo` but the title contains a social/meeting verb ("call",
+    /// "lunch", "sync", etc.) paired with an explicit time token. Routed
+    /// to the reminder container so Calendar integration can surface it.
+    case reminder(title: String, dueDate: Date, priority: Int?)
 
     /// `title` is the hashtag-stripped text. `tag` is the bare hashtag
     /// word (no `#` prefix), uppercased, max 10 chars. `priority` carries
@@ -307,6 +320,11 @@ enum CaptureParser {
         }
 
         if let due = builder.resolvedDate() {
+            // If an explicit time was parsed and the title contains a social/
+            // meeting verb, route to .reminder so Calendar integration picks it up.
+            if builder.hasTime && containsMeetingVerb(title) {
+                return .reminder(title: title, dueDate: due, priority: pri)
+            }
             return .todo(title: title, dueDate: due, priority: pri)
         }
 
@@ -346,6 +364,8 @@ enum CaptureParser {
         // BEFORE recurrence so an explicit `@6pm` wins over the implicit
         // morning/evening default that "each morning" would otherwise set.
         applyAtTimeToken(text, builder: &builder, now: now)
+        // "at <time>" word form — equivalent trigger to @time.
+        applyAtWordTimeToken(text, builder: &builder, now: now)
 
         // Recurrence channel. Detected cadence ("every day", "every monday")
         // routes the whole capture to a habit. Runs BEFORE the one-off date
@@ -364,6 +384,15 @@ enum CaptureParser {
             }
             if builder.dateRange == nil {
                 applyRelativeShorthand(text, builder: &builder, calendar: calendar, now: now)
+            }
+            if builder.dateRange == nil {
+                applyRelativeTimeOffset(text, builder: &builder, now: now)
+            }
+            if builder.dateRange == nil {
+                applyThisContextualTime(text, builder: &builder, calendar: calendar, now: now)
+            }
+            if builder.dateRange == nil {
+                applyOrdinalDate(text, builder: &builder, calendar: calendar, now: now)
             }
         }
 
@@ -522,6 +551,7 @@ enum CaptureParser {
         // are recorded for stripping so no literal `@…` clutter survives in
         // the title. The first match's range stays in `matchedRanges`; only
         // `timeRange` (used for highlighting) tracks the winner.
+        let currentHour = Calendar.current.component(.hour, from: now)
         var searchStart = text.startIndex
 
         while let atIdx = text[searchStart...].firstIndex(of: "@") {
@@ -557,7 +587,9 @@ enum CaptureParser {
             // A valid token overwrites the clock slots (last-wins) and is
             // recorded for stripping. Invalid `@…` runs are skipped — they
             // stay in the title, which is the safe, non-destructive default.
-            if !digits.isEmpty, let (hour, minute) = parseHourMinute(digits, period: period) {
+            let inferHour = period == nil ? currentHour : -1
+            if !digits.isEmpty, let (hour, minute) = parseHourMinute(digits, period: period,
+                                                                      currentHour: inferHour) {
                 // Gobble a connector word ("at"/"by") before the `@` so
                 // "Run tomorrow at @5pm" cleans up to "Run".
                 let leadingRange = gobbleConnectorBefore(atIdx, in: text)
@@ -575,7 +607,8 @@ enum CaptureParser {
 
     /// Maps a digit payload (with or without colon) to validated (h, m).
     private static func parseHourMinute(_ digits: String,
-                                        period: String?) -> (Int, Int)? {
+                                        period: String?,
+                                        currentHour: Int = -1) -> (Int, Int)? {
         var hour: Int
         var minute: Int
 
@@ -607,6 +640,16 @@ enum CaptureParser {
         if let period {
             if period == "pm" && hour < 12 { hour += 12 }
             if period == "am" && hour == 12 { hour  = 0  }
+        } else if currentHour >= 0 && hour >= 1 && hour <= 12 {
+            // Smart AM/PM inference for bare numbers (no am/pm suffix).
+            // 1–6 always PM (nobody books "3am" by default); 7–11 PM only
+            // when it's already afternoon; 12 stays at noon.
+            if hour <= 6 {
+                hour += 12
+            } else if hour <= 11 {
+                if currentHour >= 12 { hour += 12 }
+            }
+            // hour == 12 → noon, no adjustment needed
         }
         guard (0..<24).contains(hour), (0..<60).contains(minute) else { return nil }
         return (hour, minute)
@@ -624,7 +667,7 @@ enum CaptureParser {
             if text[prev].isWhitespace { cursor = prev } else { break }
         }
         // Now read the previous word.
-        var wordEnd = cursor
+        let wordEnd = cursor
         var wordStart = wordEnd
         while wordStart > text.startIndex {
             let prev = text.index(before: wordStart)
@@ -652,9 +695,22 @@ enum CaptureParser {
                                               now: Date) {
         struct KW { let needle: String; let dayOffset: Int; let alsoTime: (Int, Int)? }
         let keywords: [KW] = [
+            // Tomorrow and aliases
             KW(needle: "tomorrow", dayOffset: 1, alsoTime: nil),
+            KW(needle: "tmrw",     dayOffset: 1, alsoTime: nil),
+            KW(needle: "tmr",      dayOffset: 1, alsoTime: nil),
+            KW(needle: "tom",      dayOffset: 1, alsoTime: nil),
+            KW(needle: "tomoro",   dayOffset: 1, alsoTime: nil),
+            // Tonight and aliases
             KW(needle: "tonight",  dayOffset: 0, alsoTime: (20, 0)),
-            KW(needle: "today",    dayOffset: 0, alsoTime: nil)
+            KW(needle: "tonite",   dayOffset: 0, alsoTime: (20, 0)),
+            KW(needle: "2nite",    dayOffset: 0, alsoTime: (20, 0)),
+            KW(needle: "tn",       dayOffset: 0, alsoTime: (20, 0)),
+            // Today and aliases
+            KW(needle: "today",    dayOffset: 0, alsoTime: nil),
+            KW(needle: "tdy",      dayOffset: 0, alsoTime: nil),
+            KW(needle: "td",       dayOffset: 0, alsoTime: nil),
+            KW(needle: "2day",     dayOffset: 0, alsoTime: nil),
         ]
         let lower = text.lowercased()
 
@@ -691,7 +747,7 @@ enum CaptureParser {
             ("sunday", 1), ("monday", 2), ("tuesday", 3),
             ("wednesday", 4), ("thursday", 5), ("friday", 6), ("saturday", 7)
         ]
-        let prefixes = ["next ", "this ", "on "]
+        let prefixes = ["next ", "nxt ", "this ", "on ", "by "]
         let lower = text.lowercased()
 
         for (name, weekday) in days {
@@ -711,7 +767,7 @@ enum CaptureParser {
             let todayWeekday = calendar.component(.weekday, from: now)
             var delta = weekday - todayWeekday
             if delta <= 0 { delta += 7 }
-            if usedPrefix == "next" { delta += 7 }
+            if usedPrefix == "next" || usedPrefix == "nxt" { delta += 7 }
 
             guard let base = calendar.date(byAdding: .day, value: delta, to: now) else { continue }
             let ymd = calendar.dateComponents([.year, .month, .day], from: base)
@@ -765,8 +821,8 @@ enum CaptureParser {
             let unit = String(chars[unitStart..<cursor])
             let component: Calendar.Component?
             switch unit {
-            case "day", "days":   component = .day
-            case "week", "weeks": component = .weekOfYear
+            case "day", "days":                 component = .day
+            case "week", "weeks", "wk", "wks": component = .weekOfYear
             default:               component = nil
             }
             guard let comp = component else { i += 1; continue }
@@ -784,6 +840,280 @@ enum CaptureParser {
             builder.setDate(year: y, month: m, day: d, range: startOrig..<endOrig)
             return
         }
+    }
+
+    // MARK: - Time channel: "at <time>" word trigger (Change 2 + 3)
+
+    /// Parses "at 9", "at 9pm", "at 9:30am", "at 17:00" as a time trigger,
+    /// whole-word matched on "at" so "chat" / "that" / "flat" are ignored.
+    private static func applyAtWordTimeToken(_ text: String,
+                                             builder: inout TaskDraftBuilder,
+                                             now: Date) {
+        let lower = text.lowercased()
+        let currentHour = Calendar.current.component(.hour, from: now)
+        var searchIdx = lower.startIndex
+
+        while searchIdx < lower.endIndex {
+            guard let atRange = lower.range(of: "at", range: searchIdx..<lower.endIndex) else { break }
+
+            // Whole-word check: no letter before "at"
+            let beforeOK = atRange.lowerBound == lower.startIndex
+                || !lower[lower.index(before: atRange.lowerBound)].isLetter
+            // Must be followed by whitespace (not end-of-string alone)
+            let afterChar: Character? = atRange.upperBound < lower.endIndex
+                ? lower[atRange.upperBound] : nil
+            let afterOK = afterChar?.isWhitespace == true
+
+            guard beforeOK && afterOK else { searchIdx = atRange.upperBound; continue }
+
+            // Skip whitespace
+            var cursor = atRange.upperBound
+            while cursor < lower.endIndex, lower[cursor].isWhitespace {
+                cursor = lower.index(after: cursor)
+            }
+
+            // Collect digits + optional colon
+            var digits = ""
+            var sawColon = false
+            while cursor < lower.endIndex {
+                let c = lower[cursor]
+                if c.isNumber {
+                    digits.append(c)
+                    cursor = lower.index(after: cursor)
+                } else if c == ":" && !sawColon && !digits.isEmpty {
+                    digits.append(c)
+                    sawColon = true
+                    cursor = lower.index(after: cursor)
+                } else {
+                    break
+                }
+            }
+
+            guard !digits.isEmpty else { searchIdx = atRange.upperBound; continue }
+
+            // Optional am/pm
+            var period: String? = nil
+            if cursor < lower.endIndex {
+                let tail = String(lower[cursor...].prefix(2))
+                if tail == "am" || tail == "pm" {
+                    period = tail
+                    cursor = lower.index(cursor, offsetBy: 2)
+                }
+            }
+
+            // No letter should immediately follow (guards against e.g. "at 9pm sharp" is fine,
+            // but "at 9foo" is not a valid time)
+            if cursor < lower.endIndex, lower[cursor].isLetter {
+                searchIdx = atRange.upperBound; continue
+            }
+
+            let inferHour = period == nil ? currentHour : -1
+            if let (hour, minute) = parseHourMinute(digits, period: period, currentHour: inferHour) {
+                // Strip "at <time>" — from start of "at" through end of time token
+                let origStart = mapRange(atRange, fromLower: lower, original: text).lowerBound
+                let distEnd   = lower.distance(from: lower.startIndex, to: cursor)
+                let origEnd   = text.index(text.startIndex, offsetBy: distEnd)
+                builder.setTime(hour: hour, minute: minute, range: origStart..<origEnd)
+            }
+
+            guard cursor < lower.endIndex else { break }
+            searchIdx = cursor
+        }
+    }
+
+    // MARK: - Date+time channel: relative time offsets (Change 4)
+
+    /// Handles "in an hour", "in a few hours", "in N hours", "in N mins", etc.
+    /// Resolves to `now + offset` and sets both date and time on the builder.
+    private static func applyRelativeTimeOffset(_ text: String,
+                                                builder: inout TaskDraftBuilder,
+                                                now: Date) {
+        let lower = text.lowercased()
+        let chars  = Array(lower)
+        var i      = 0
+
+        while i < chars.count {
+            // Whole-word "in" check
+            guard chars[i] == "i",
+                  i + 1 < chars.count, chars[i + 1] == "n" else { i += 1; continue }
+            if i > 0, chars[i - 1].isLetter { i += 1; continue }
+            let afterIn = i + 2
+            guard afterIn < chars.count, chars[afterIn].isWhitespace else { i += 1; continue }
+
+            var cursor = afterIn
+            while cursor < chars.count, chars[cursor].isWhitespace { cursor += 1 }
+
+            var offsetSeconds: Int? = nil
+            var endCursor = cursor
+
+            // "an hour"
+            let slice7 = chars.count - cursor >= 7 ? String(chars[cursor..<cursor + 7]) : ""
+            if slice7 == "an hour" {
+                let boundary = cursor + 7 >= chars.count || !chars[cursor + 7].isLetter
+                if boundary { offsetSeconds = 3_600; endCursor = cursor + 7 }
+            }
+
+            // "a few hours"
+            if offsetSeconds == nil {
+                let slice11 = chars.count - cursor >= 11 ? String(chars[cursor..<cursor + 11]) : ""
+                if slice11 == "a few hours" {
+                    let boundary = cursor + 11 >= chars.count || !chars[cursor + 11].isLetter
+                    if boundary { offsetSeconds = 3 * 3_600; endCursor = cursor + 11 }
+                }
+            }
+
+            // "N <unit>"
+            if offsetSeconds == nil {
+                endCursor = cursor
+                let numStart = endCursor
+                while endCursor < chars.count, chars[endCursor].isNumber { endCursor += 1 }
+                guard endCursor > numStart, let n = Int(String(chars[numStart..<endCursor])), n > 0 else {
+                    i += 1; continue
+                }
+                while endCursor < chars.count, chars[endCursor].isWhitespace { endCursor += 1 }
+                let unitStart = endCursor
+                while endCursor < chars.count, chars[endCursor].isLetter { endCursor += 1 }
+                guard endCursor > unitStart else { i += 1; continue }
+                let unit = String(chars[unitStart..<endCursor])
+                guard endCursor >= chars.count || !chars[endCursor].isLetter else { i += 1; continue }
+
+                switch unit {
+                case "hour", "hours":                    offsetSeconds = n * 3_600
+                case "min", "mins", "minute", "minutes": offsetSeconds = n * 60
+                default: i += 1; continue
+                }
+            }
+
+            guard let secs = offsetSeconds else { i += 1; continue }
+
+            let target = now.addingTimeInterval(TimeInterval(secs))
+            let cal    = Calendar.current
+            let comps  = cal.dateComponents([.year, .month, .day, .hour, .minute], from: target)
+            guard let y = comps.year, let m = comps.month, let d = comps.day,
+                  let h = comps.hour, let min = comps.minute else { i += 1; continue }
+
+            let startOrig = text.index(text.startIndex, offsetBy: i)
+            let endOrig   = text.index(text.startIndex, offsetBy: endCursor)
+            builder.setDate(year: y, month: m, day: d, range: startOrig..<endOrig)
+            if !builder.hasTime {
+                builder.setTime(hour: h, minute: min, range: startOrig..<endOrig)
+            }
+            return
+        }
+    }
+
+    // MARK: - Date+time channel: "this morning/afternoon/evening/weekend" (Change 5)
+
+    private static func applyThisContextualTime(_ text: String,
+                                                builder: inout TaskDraftBuilder,
+                                                calendar: Calendar,
+                                                now: Date) {
+        struct Ctx {
+            let needle: String
+            let hour: Int
+            let minute: Int
+            let isSaturday: Bool
+        }
+        let currentHour = calendar.component(.hour, from: now)
+        let lower = text.lowercased()
+
+        let contexts: [Ctx] = [
+            Ctx(needle: "this morning",   hour: 9,  minute: 0, isSaturday: false),
+            Ctx(needle: "this afternoon", hour: 14, minute: 0, isSaturday: false),
+            Ctx(needle: "this evening",   hour: 18, minute: 0, isSaturday: false),
+            Ctx(needle: "this weekend",   hour: 10, minute: 0, isSaturday: true),
+        ]
+
+        for ctx in contexts {
+            guard let lowerRange = wholeWordRange(of: ctx.needle, in: lower) else { continue }
+
+            var targetDate: Date
+            if ctx.isSaturday {
+                let todayWeekday = calendar.component(.weekday, from: now)
+                var delta = 7 - todayWeekday  // days until Saturday (weekday 7)
+                if delta < 0 { delta += 7 }
+                targetDate = calendar.date(byAdding: .day, value: delta, to: now) ?? now
+            } else {
+                // If the target hour is already past, push to tomorrow
+                if currentHour >= ctx.hour {
+                    targetDate = calendar.date(byAdding: .day, value: 1, to: now) ?? now
+                } else {
+                    targetDate = now
+                }
+            }
+
+            let ymd = calendar.dateComponents([.year, .month, .day], from: targetDate)
+            guard let y = ymd.year, let m = ymd.month, let d = ymd.day else { continue }
+
+            let origRange = mapRange(lowerRange, fromLower: lower, original: text)
+            builder.setDate(year: y, month: m, day: d, range: origRange)
+            if !builder.hasTime {
+                builder.setTime(hour: ctx.hour, minute: ctx.minute, range: origRange)
+            }
+            return
+        }
+    }
+
+    // MARK: - Date channel: ordinal date expressions (Change 6)
+
+    /// Handles "on the 20th", "on the 1st", "on the 3rd", etc.
+    /// Resolves to the Nth of this month at 9am; bumps to next month if past.
+    private static func applyOrdinalDate(_ text: String,
+                                         builder: inout TaskDraftBuilder,
+                                         calendar: Calendar,
+                                         now: Date) {
+        let lower = text.lowercased()
+        guard let regex = try? NSRegularExpression(
+            pattern: #"\bon the (\d{1,2})(st|nd|rd|th)\b"#,
+            options: .caseInsensitive) else { return }
+
+        let nsLower = lower as NSString
+        guard let match = regex.firstMatch(in: lower, range: NSRange(location: 0, length: nsLower.length)),
+              let numNSRange = Range(match.range(at: 1), in: lower),
+              let day = Int(lower[numNSRange]),
+              (1...31).contains(day),
+              let fullMatchRange = Range(match.range, in: lower) else { return }
+
+        var comps      = calendar.dateComponents([.year, .month], from: now)
+        comps.day      = day
+        comps.hour     = 9
+        comps.minute   = 0
+
+        var targetDate = calendar.date(from: comps)
+        if let t = targetDate, t <= now {
+            comps.month  = (comps.month ?? 1) + 1
+            targetDate   = calendar.date(from: comps)
+        }
+        guard let resolved = targetDate else { return }
+
+        let ymd = calendar.dateComponents([.year, .month, .day], from: resolved)
+        guard let y = ymd.year, let m = ymd.month, let d = ymd.day else { return }
+
+        let origRange = mapRange(fullMatchRange, fromLower: lower, original: text)
+        builder.setDate(year: y, month: m, day: d, range: origRange)
+        if !builder.hasTime {
+            builder.setTime(hour: 9, minute: 0, range: origRange)
+        }
+    }
+
+    // MARK: - Intent classifier helpers (Change 7)
+
+    /// Returns `true` when `title` contains a social/meeting verb or phrase
+    /// that suggests the capture is a scheduled social event rather than a plain task.
+    private static func containsMeetingVerb(_ title: String) -> Bool {
+        let lower = title.lowercased()
+        // Multi-word phrases first (whole-word matched via wholeWordRange)
+        let phrases = ["catch up", "chat with", "talk to", "check in"]
+        for phrase in phrases {
+            if wholeWordRange(of: phrase, in: lower) != nil { return true }
+        }
+        // Single-word verbs
+        let verbs = ["meet", "meeting", "call", "sync", "lunch", "dinner",
+                     "coffee", "catchup", "checkin", "zoom", "interview"]
+        for verb in verbs {
+            if wholeWordRange(of: verb, in: lower) != nil { return true }
+        }
+        return false
     }
 
     // MARK: - Range helpers

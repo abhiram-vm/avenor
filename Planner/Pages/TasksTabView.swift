@@ -14,6 +14,7 @@ struct TasksTabView: View {
 
     @State private var selectedFilter: TaskType? = nil
     @State private var sortMode: TaskSortMode = .chronological
+    @State private var debtExpanded = false
     @State private var expandedTaskID: UUID? = nil
     @State private var showingNewItemSheet = false
     @State private var showingArchive = false
@@ -33,6 +34,20 @@ struct TasksTabView: View {
 
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+                        if !actionDebt.isEmpty {
+                            OverdueActionDebtView(
+                                count: actionDebt.count,
+                                isExpanded: debtExpanded,
+                                tasks: actionDebt,
+                                onToggle: { withAnimation(spring) { debtExpanded.toggle() }; AppHaptic.tap() },
+                                onRollToToday: { rollDebt(to: .now) },
+                                onDeferToTomorrow: { rollDebt(to: tomorrow) }
+                            )
+                            .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
+                            .padding(.top, DesignTokens.Spacing.pageTop)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
                         TodayHeader(tasks: tasks)
                             .padding(.horizontal, DesignTokens.Spacing.pageHorizontal)
                             .padding(.top, DesignTokens.Spacing.pageTop)
@@ -359,6 +374,35 @@ struct TasksTabView: View {
             .sorted { $0.updatedAt < $1.updatedAt }
     }
 
+    /// Outstanding "Action Debt": open todos/reminders whose deadline fell
+    /// before today. Derived from the reactive `@Query` so the banner appears
+    /// and clears the instant a row is rolled or completed.
+    private var actionDebt: [PersistedTask] {
+        let startOfToday = Calendar.current.startOfDay(for: .now)
+        return tasks
+            .filter { t in
+                guard t.type == .todo || t.type == .reminder else { return false }
+                guard !(t.isDone ?? false) else { return false }
+                guard let due = t.dueDate else { return false }
+                return due < startOfToday
+            }
+            .sorted { ($0.dueDate ?? .distantPast) < ($1.dueDate ?? .distantPast) }
+    }
+
+    private var tomorrow: Date {
+        Calendar.current.date(byAdding: .day, value: 1, to: .now) ?? .now
+    }
+
+    private func rollDebt(to target: Date) {
+        let batch = actionDebt
+        guard !batch.isEmpty else { return }
+        withAnimation(spring) {
+            LifecycleAutomation.rollForwardTasks(batch, to: target, in: modelContext)
+            debtExpanded = false
+        }
+        AppHaptic.success()
+    }
+
     private func toggleExpanded(_ task: PersistedTask) {
         withAnimation(spring) {
             expandedTaskID = (expandedTaskID == task.id) ? nil : task.id
@@ -500,6 +544,123 @@ struct TodayHeader: View {
                 .textCase(.uppercase)
                 .foregroundStyle(p.textSecondary)
         }
+    }
+}
+
+// MARK: - OverdueActionDebtView
+//
+// Collapsible banner pinned to the absolute top of the Tasks stream. Only
+// renders when there's outstanding "Action Debt" (open todos/reminders past
+// their deadline). Collapsed = one-line summary + chevron; expanded reveals
+// the overdue titles and two batch actions: roll the whole set to today, or
+// defer it to tomorrow. Palette-driven, hairline-framed — reads as a quiet
+// system prompt, not an alert.
+
+struct OverdueActionDebtView: View {
+    @Environment(ThemeStore.self) private var theme
+    let count: Int
+    let isExpanded: Bool
+    let tasks: [PersistedTask]
+    let onToggle: () -> Void
+    let onRollToToday: () -> Void
+    let onDeferToTomorrow: () -> Void
+
+    var body: some View {
+        let p = theme.palette
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: onToggle) {
+                HStack(spacing: 10) {
+                    Image(systemName: "clock.badge.exclamationmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(p.textPrimary)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Overdue Action Debt")
+                            .font(p.font(.micro))
+                            .tracking(p.microTracking)
+                            .textCase(.uppercase)
+                            .foregroundStyle(p.textPrimary)
+                        Text("\(count) item\(count == 1 ? "" : "s") past due")
+                            .font(p.font(.caption))
+                            .monospacedDigit()
+                            .foregroundStyle(p.textSecondary)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(p.textTertiary)
+                        .rotationEffect(.degrees(isExpanded ? 0 : -90))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                Rectangle().fill(p.hairline).frame(height: 0.5)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(tasks.prefix(5)) { task in
+                        HStack(spacing: 8) {
+                            Rectangle()
+                                .fill(task.type.tint.opacity(0.7))
+                                .frame(width: 2, height: 12)
+                            Text(task.title.isEmpty ? "Untitled" : task.title)
+                                .font(p.font(.caption))
+                                .foregroundStyle(p.textSecondary)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                    if tasks.count > 5 {
+                        Text("+\(tasks.count - 5) more")
+                            .font(p.font(.micro))
+                            .tracking(p.microTracking)
+                            .textCase(.uppercase)
+                            .foregroundStyle(p.textTertiary)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+
+                HStack(spacing: 10) {
+                    actionButton("Roll to Today", filled: true, action: onRollToToday)
+                    actionButton("Defer to Tomorrow", filled: false, action: onDeferToTomorrow)
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.card)
+                .fill(p.chromeSurface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.card)
+                .strokeBorder(p.prominent, lineWidth: 0.5)
+        )
+    }
+
+    private func actionButton(_ title: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        let p = theme.palette
+        return Button(action: action) {
+            Text(title)
+                .font(p.font(.micro))
+                .tracking(p.microTracking)
+                .textCase(.uppercase)
+                .foregroundStyle(p.textPrimary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    Capsule().fill(p.chromeSurface)
+                )
+                .overlay(
+                    Capsule().strokeBorder(filled ? p.prominent : p.hairline, lineWidth: filled ? 1 : 0.5)
+                )
+        }
+        .buttonStyle(.plain)
     }
 }
 

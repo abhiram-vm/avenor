@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Avenor · Streak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --mint: #6EE7A8;
+    --mint-soft: rgba(110, 231, 168, 0.5);
+    --bg: #000000;
+    --surface: #0e0e11;
+    --surface-lit: #18181c;
+    --ring-bg: #1b1b1f;
+    --hairline: rgba(255, 255, 255, 0.06);
+    --hairline-strong: rgba(255, 255, 255, 0.1);
+    --txt: #ffffff;
+    --txt-dim: rgba(255, 255, 255, 0.42);
+    --txt-faint: rgba(255, 255, 255, 0.26);
+
+    /* ring geometry: r=37, C = 2*PI*37 */
+    --ring-c: 232.478;
+
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --drift: cubic-bezier(0.45, 0, 0.55, 1);
+    --ease-io: cubic-bezier(0.42, 0, 0.58, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(120% 120% at 50% 40%, #050505 0%, #000 70%);
+  }
+
+  /* ---------- Ambient mint glow ---------- */
+  .glow {
+    position: absolute;
+    width: 460px; height: 460px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(110,231,168,0.18) 0%, rgba(110,231,168,0.05) 45%, transparent 70%);
+    filter: blur(20px);
+    opacity: 0.06;
+    animation: glowPulse 4s var(--drift) infinite;
+    pointer-events: none;
+  }
+  @keyframes glowPulse {
+    0%, 100% { opacity: 0.04; transform: scale(1); }
+    50%      { opacity: 0.08; transform: scale(1.04); }
+  }
+
+  /* ---------- Floating particles ---------- */
+  .particles { position: absolute; inset: 0; pointer-events: none; }
+  .p {
+    position: absolute;
+    bottom: -10px;
+    width: 2px; height: 2px;
+    border-radius: 50%;
+    background: #fff;
+    opacity: 0;
+    animation-name: particleRise;
+    animation-timing-function: var(--drift);
+    animation-iteration-count: infinite;
+    will-change: transform, opacity;
+  }
+  @keyframes particleRise {
+    0%   { transform: translateY(0) translateX(0); opacity: 0; }
+    12%  { opacity: var(--po, 0.18); }
+    88%  { opacity: var(--po, 0.18); }
+    100% { transform: translateY(-78vh) translateX(var(--pdx, 8px)); opacity: 0; }
+  }
+
+  /* ---------- Phone depth chain ----------
+     Separate layers so no two animations touch the same transform property. */
+  .perspective { perspective: 800px; }
+
+  .float {
+    animation: phoneFloat 6s var(--drift) infinite;
+    will-change: transform;
+  }
+  @keyframes phoneFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  .tilt {
+    animation: phoneTilt 8s var(--drift) infinite;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  @keyframes phoneTilt {
+    0%   { transform: rotateX(2deg) rotateY(-3deg); }
+    50%  { transform: rotateX(-2deg) rotateY(3deg); }
+    100% { transform: rotateX(2deg) rotateY(-3deg); }
+  }
+
+  /* ---------- Phone body ---------- */
+  .phone {
+    position: relative;
+    width: 280px; height: 580px;
+    border-radius: 44px;
+    background: #000;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow:
+      0 40px 80px rgba(0,0,0,0.8),
+      0 8px 24px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  /* faint top screen sheen for depth */
+  .phone::before {
+    content: "";
+    position: absolute; inset: 1px;
+    border-radius: 43px;
+    background: radial-gradient(140% 60% at 50% -8%, rgba(255,255,255,0.05), transparent 50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .island {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 95px; height: 26px;
+    background: #000;
+    border-radius: 14px;
+    z-index: 10;
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.06);
+  }
+  .island::after {
+    content: "";
+    position: absolute;
+    right: 12px; top: 50%;
+    width: 7px; height: 7px;
+    transform: translateY(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #1c1c22, #000);
+    box-shadow: inset 0 0 1px rgba(110,231,168,0.25);
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    padding: 64px 16px 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* section label like the real app */
+  .sect {
+    display: flex; align-items: baseline; gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px; letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin: 6px 4px 14px;
+  }
+  .sect .dot { color: var(--txt-faint); }
+  .sect .n { color: var(--txt-faint); }
+
+  /* ---------- Habit card ---------- */
+  .card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 14px;
+    padding: 18px 16px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    overflow: hidden;
+    will-change: background;
+  }
+  .card.brighten { animation: cardBrighten 0.6s var(--ease-out); }
+  @keyframes cardBrighten {
+    0%, 100% { background: var(--surface); }
+    35%      { background: var(--surface-lit); }
+  }
+  /* mint rail hint on the left edge */
+  .card::before {
+    content: "";
+    position: absolute; left: 0; top: 14px; bottom: 14px;
+    width: 2px; border-radius: 2px;
+    background: var(--mint);
+    opacity: 0.85;
+  }
+
+  .card-left { flex: 1; min-width: 0; padding-left: 8px; }
+
+  .eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px; letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    margin-bottom: 7px;
+  }
+  .title {
+    font-size: 19px; font-weight: 700; letter-spacing: -0.3px;
+    color: var(--txt);
+    margin-bottom: 16px;
+  }
+
+  /* weekday dots */
+  .week { display: flex; gap: 4px; }
+  .day { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 13px; }
+  .day .lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px; letter-spacing: 0.5px;
+    color: var(--txt-faint);
+  }
+  .day .pip {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    transition: background 0.35s var(--ease-out), transform 0.35s var(--spring), box-shadow 0.35s var(--ease-out);
+    will-change: transform;
+  }
+  .day.on .pip {
+    background: var(--mint);
+    transform: scale(1.25);
+    box-shadow: 0 0 7px rgba(110,231,168,0.55);
+  }
+
+  /* ---------- Streak ring ---------- */
+  .streak { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .ring-wrap {
+    position: relative;
+    width: 84px; height: 84px;
+    will-change: transform;
+  }
+  .ring-wrap.pulse { animation: ringPulse 0.45s var(--spring); }
+  @keyframes ringPulse {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.15); }
+    100% { transform: scale(1); }
+  }
+  /* glow halo element (box-shadow radiate) */
+  .ring-halo {
+    position: absolute; inset: 0; border-radius: 50%;
+    pointer-events: none;
+    box-shadow: 0 0 0 0 rgba(110,231,168,0);
+  }
+  .ring-halo.radiate { animation: ringGlow 0.65s var(--ease-out); }
+  @keyframes ringGlow {
+    0%   { box-shadow: 0 0 0 0 rgba(110,231,168,0.55); }
+    100% { box-shadow: 0 0 0 30px rgba(110,231,168,0); }
+  }
+
+  .ring-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring-track { fill: var(--ring-bg); stroke: rgba(255,255,255,0.08); stroke-width: 4; }
+  .ring-prog {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: var(--ring-c);
+    stroke-dashoffset: var(--ring-c);
+  }
+  .ring-prog.draw { animation: ringDraw 2s var(--ease-io) forwards; }
+  @keyframes ringDraw {
+    from { stroke-dashoffset: var(--ring-c); }
+    to   { stroke-dashoffset: 0; }
+  }
+
+  /* number + check inside ring */
+  .ring-core {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px;
+  }
+  .num-reel {
+    position: relative;
+    height: 30px; width: 40px;
+    overflow: hidden;
+    display: grid; place-items: center;
+  }
+  .num-reel span {
+    position: absolute;
+    font-size: 26px; font-weight: 800; letter-spacing: -1px;
+    color: var(--txt);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .num-out { animation: slideUpOut 0.32s var(--ease-out) forwards; }
+  .num-in  { animation: slideUpIn 0.32s var(--spring) forwards; }
+  @keyframes slideUpOut {
+    0%   { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-118%); opacity: 0; }
+  }
+  @keyframes slideUpIn {
+    0%   { transform: translateY(118%); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .mini-check {
+    width: 9px; height: 9px;
+    color: var(--mint);
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-out);
+  }
+  .mini-check.show { opacity: 0.9; }
+
+  /* big flash check overlay */
+  .flash-check {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .flash-check svg { width: 34px; height: 34px; color: var(--mint); transform: none; }
+  .flash-check.flash { animation: checkFlash 0.6s var(--spring); }
+  @keyframes checkFlash {
+    0%   { opacity: 0; transform: scale(0.4); }
+    30%  { opacity: 1; transform: scale(1.12); }
+    70%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+
+  .streak-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px; letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--txt-dim);
+    text-align: center;
+    line-height: 1.35;
+  }
+
+  /* reset fade for seamless loop */
+  .fadeable { transition: opacity 0.35s var(--ease-out); }
+  .fadeable.hidden { opacity: 0; }
+
+  /* wordmark under phone */
+  .wordmark {
+    position: absolute;
+    bottom: 36px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px; letter-spacing: 5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.22);
+  }
+  .wordmark b { color: rgba(110,231,168,0.65); font-weight: 400; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="glow"></div>
+
+    <div class="particles">
+      <div class="p" style="left:18%; --po:0.16; --pdx:14px; animation-duration:11s; animation-delay:0s;"></div>
+      <div class="p" style="left:30%; --po:0.12; --pdx:-10px; animation-duration:14s; animation-delay:2.4s;"></div>
+      <div class="p" style="left:42%; --po:0.20; --pdx:8px; animation-duration:9.5s; animation-delay:1.1s;"></div>
+      <div class="p" style="left:55%; --po:0.14; --pdx:-14px; animation-duration:13s; animation-delay:3.6s;"></div>
+      <div class="p" style="left:63%; --po:0.18; --pdx:6px; animation-duration:10.5s; animation-delay:0.6s;"></div>
+      <div class="p" style="left:72%; --po:0.11; --pdx:-8px; animation-duration:15s; animation-delay:4.8s;"></div>
+      <div class="p" style="left:84%; --po:0.17; --pdx:12px; animation-duration:12s; animation-delay:2s;"></div>
+      <div class="p" style="left:48%; --po:0.13; --pdx:-6px; animation-duration:16s; animation-delay:5.5s;"></div>
+    </div>
+
+    <div class="perspective">
+      <div class="float">
+        <div class="tilt">
+          <div class="phone">
+            <div class="island"></div>
+            <div class="screen">
+              <div class="sect">
+                <span>Standalone Routines</span>
+                <span class="dot">·</span>
+                <span class="n">1</span>
+              </div>
+
+              <div class="card" id="card">
+                <div class="card-left">
+                  <div class="eyebrow">Every Day</div>
+                  <div class="title">Walk a Mile</div>
+                  <div class="week" id="week">
+                    <div class="day"><span class="lbl">S</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">M</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">T</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">W</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">T</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">F</span><span class="pip"></span></div>
+                    <div class="day"><span class="lbl">S</span><span class="pip"></span></div>
+                  </div>
+                </div>
+
+                <div class="streak fadeable" id="streak">
+                  <div class="ring-wrap" id="ringWrap">
+                    <div class="ring-halo" id="halo"></div>
+                    <svg viewBox="0 0 84 84">
+                      <circle class="ring-track" cx="42" cy="42" r="37"></circle>
+                      <circle class="ring-prog" id="ringProg" cx="42" cy="42" r="37"></circle>
+                    </svg>
+                    <div class="ring-core">
+                      <div class="num-reel" id="reel"><span class="num-static">0</span></div>
+                      <svg class="mini-check" id="miniCheck" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="3"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </div>
+                    <div class="flash-check" id="flashCheck">
+                      <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 12.5l5 5L20 6.5" stroke="currentColor" stroke-width="2.6"
+                          stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="streak-lbl">Day<br/>Streak</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wordmark">A V E N <b>O</b> R</div>
+  </div>
+
+<script>
+  const ringProg  = document.getElementById('ringProg');
+  const reel      = document.getElementById('reel');
+  const ringWrap  = document.getElementById('ringWrap');
+  const halo      = document.getElementById('halo');
+  const card      = document.getElementById('card');
+  const miniCheck = document.getElementById('miniCheck');
+  const flashCheck= document.getElementById('flashCheck');
+  const streak    = document.getElementById('streak');
+  const days      = Array.from(document.querySelectorAll('#week .day'));
+
+  const timers = [];
+  const after = (ms, fn) => timers.push(setTimeout(fn, ms));
+  const clearTimers = () => { timers.forEach(clearTimeout); timers.length = 0; };
+
+  // helpers ---------------------------------------------------------------
+  function setNumber(n) {
+    reel.innerHTML = `<span class="num-static">${n}</span>`;
+  }
+
+  function flipNumber(from, to) {
+    reel.innerHTML =
+      `<span class="num-out">${from}</span><span class="num-in">${to}</span>`;
+    after(360, () => setNumber(to));
+  }
+
+  function resetState() {
+    clearTimers();
+
+    // wipe ring draw
+    ringProg.classList.remove('draw');
+    void ringProg.offsetWidth;          // reflow so the animation can replay
+
+    // clear transient classes
+    ringWrap.classList.remove('pulse');
+    halo.classList.remove('radiate');
+    card.classList.remove('brighten');
+    flashCheck.classList.remove('flash');
+    miniCheck.classList.remove('show');
+
+    days.forEach(d => d.classList.remove('on'));
+    setNumber(0);
+  }
+
+  // master loop -----------------------------------------------------------
+  function run() {
+    resetState();
+
+    // reveal streak block (in case it was faded for the loop seam)
+    streak.classList.remove('hidden');
+
+    // SCENE 1 — build 0 -> 7 over 2s, ring draws, dots stagger in
+    ringProg.classList.add('draw');
+
+    const STEPS = 7;
+    const DRAW_MS = 2000;
+    for (let i = 1; i <= STEPS; i++) {
+      const t = Math.round((DRAW_MS / STEPS) * i);
+      after(t, () => setNumber(i));
+      // dots fill one-by-one with a 0.2s feel, locked to the count
+      after(Math.round(t * 0.85), () => days[i - 1].classList.add('on'));
+    }
+    // settle the persistent mini-check once the ring completes
+    after(DRAW_MS + 120, () => miniCheck.classList.add('show'));
+
+    // SCENE 2 — completion tap at 4s
+    after(4000, () => {
+      ringWrap.classList.add('pulse');
+      halo.classList.add('radiate');
+      card.classList.add('brighten');
+      miniCheck.classList.remove('show');       // hide small check during flash
+      flashCheck.classList.add('flash');         // big ✓ flashes ~0.6s
+    });
+    after(4520, () => flipNumber(7, 8));         // slot-machine 7 -> 8
+    after(4900, () => miniCheck.classList.add('show'));
+
+    // SCENE seam — fade streak out, then loop
+    after(7500, () => streak.classList.add('hidden'));
+    after(8000, run);
+  }
+
+  // kick off once fonts/layout are ready
+  window.addEventListener('load', () => requestAnimationFrame(run));
+</script>
+</body>
+</html>

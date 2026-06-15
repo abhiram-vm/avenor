@@ -1,0 +1,128 @@
+:root {
+  /* Colors - Stark Dark Custom */
+  --canvas: #0a0a0c;
+  --surface: #101013;
+  --accent-primary: #00d9ff;
+  --accent-secondary: #a78bfa;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a3;
+  --text-tertiary: #6b6b6f;
+
+  --border: rgba(255, 255, 255, 0.1);
+  --border-light: rgba(255, 255, 255, 0.05);
+
+  /* Typography Scale */
+  --font-display: Georgia, 'Georgia Serif', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+
+  --size-display: 72px;
+  --size-heading-1: 56px;
+  --size-heading-2: 40px;
+  --size-heading-3: 28px;
+  --size-body: 16px;
+  --size-body-sm: 14px;
+  --size-micro: 12px;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.8;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+
+  /* Breakpoints */
+  --bp-mobile: 640px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--canvas);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: var(--line-height-tight);
+}
+
+h1 {
+  font-size: var(--size-heading-1);
+}
+
+h2 {
+  font-size: var(--size-heading-2);
+}
+
+h3 {
+  font-size: var(--size-heading-3);
+}
+
+p {
+  margin: 0;
+}
+
+/* Links */
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  transition: opacity 0.3s ease;
+}
+
+a:hover {
+  opacity: 0.8;
+}
+
+/* Buttons */
+button {
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--size-body);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Utility Classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+@media (max-width: 768px) {
+  :root {
+    --size-display: 48px;
+    --size-heading-1: 40px;
+    --size-heading-2: 28px;
+    --size-heading-3: 22px;
+  }
+
+  .container {
+    padding: 0 var(--space-md);
+  }
+}
