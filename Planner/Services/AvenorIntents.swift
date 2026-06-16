@@ -151,6 +151,21 @@ struct AddTaskIntent: AppIntent {
             )
             context.insert(habit)
             savedTitle = title
+
+        #if os(macOS)
+        case .calendar(let title, let startDate, let duration):
+            // macOS Shortcuts/Siri: a timed capture books a calendar event via
+            // EventKit (same path as the Mac capture bar) rather than inserting
+            // a SwiftData row. Gated behind `#if os(macOS)` so iOS — where the
+            // `.calendar` case doesn't exist — keeps its exhaustive switch.
+            _ = EventKitService.shared.createEvent(
+                title: title,
+                startDate: startDate,
+                duration: duration,
+                context: context
+            )
+            savedTitle = title
+        #endif
         }
 
         do {

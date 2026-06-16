@@ -164,6 +164,20 @@ enum CaptureIntent: Equatable {
     /// 6pm"); `tag` is an optional hashtag; `priority` follows the bang
     /// rules. Routes to the habit container, not the task list.
     case habit(title: String, rule: RecurrenceRule, anchor: Date?, tag: String?, priority: Int?)
+
+    #if os(macOS)
+    /// A scheduled calendar event. **macOS-only.** Produced when a clock time
+    /// is present with no recurrence, no hashtag, no priority bang, and no
+    /// social/meeting verb — those route to habit / idea / todo / reminder
+    /// respectively. `startDate` is always resolved (the parser never emits
+    /// this without a time); `duration` defaults to one hour. The Mac capture
+    /// bar routes this to EventKit.
+    ///
+    /// Gated behind `#if os(macOS)` so the iOS capture switch
+    /// (`OverviewTabView.commitCapture`), which must stay exhaustive and is
+    /// off-limits, never sees a new case — iOS routing is byte-identical.
+    case calendar(title: String, startDate: Date, duration: TimeInterval)
+    #endif
 }
 
 // MARK: - TaskDraftBuilder
@@ -280,6 +294,11 @@ struct TaskDraftBuilder {
 
 enum CaptureParser {
 
+    /// Default span for a `.calendar` event when capture text carries only a
+    /// start time (one hour). macOS-only routing reads this; declared
+    /// unconditionally so the constant has a single home.
+    static let defaultEventDuration: TimeInterval = 3600
+
     // MARK: Public entry
 
     /// Single entry point. Returns `nil` for empty / whitespace-only input.
@@ -320,6 +339,25 @@ enum CaptureParser {
         }
 
         if let due = builder.resolvedDate() {
+            #if os(macOS)
+            // macOS capture-bar event routing (inserted after habit + idea,
+            // before the reminder/todo fallthrough). Recurrence and hashtag
+            // already returned above, so they're excluded here by construction.
+            //
+            //  • A clock time with no priority bang and no meeting verb books a
+            //    calendar event ("standup tomorrow 10am" → .calendar).
+            //  • A priority bang flags a task, overriding event/reminder routing
+            //    ("meeting at 5pm !!!" → .todo).
+            //
+            // iOS excludes this whole block, so its routing is unchanged: a
+            // bare date still → .todo, a timed meeting verb still → .reminder.
+            if builder.hasTime, pri == nil, !containsMeetingVerb(title) {
+                return .calendar(title: title, startDate: due, duration: defaultEventDuration)
+            }
+            if pri != nil {
+                return .todo(title: title, dueDate: due, priority: pri)
+            }
+            #endif
             // If an explicit time was parsed and the title contains a social/
             // meeting verb, route to .reminder so Calendar integration picks it up.
             if builder.hasTime && containsMeetingVerb(title) {
@@ -366,6 +404,18 @@ enum CaptureParser {
         applyAtTimeToken(text, builder: &builder, now: now)
         // "at <time>" word form — equivalent trigger to @time.
         applyAtWordTimeToken(text, builder: &builder, now: now)
+
+        #if os(macOS)
+        // Bare time token ("10am", "2pm", "3:30pm", "17:00"). macOS-only: it
+        // exists to feed the Mac `.calendar` route — the iOS parser never had
+        // bare-time detection and its routing must stay byte-identical, so this
+        // is gated. Runs only when no explicit `@time` / "at time" already
+        // locked the clock, and reuses the shared `parseHourMinute` validator
+        // (no duplicated time logic).
+        if !builder.hasTime {
+            applyBareTimeToken(text, builder: &builder, now: now)
+        }
+        #endif
 
         // Recurrence channel. Detected cadence ("every day", "every monday")
         // routes the whole capture to a habit. Runs BEFORE the one-off date
@@ -604,6 +654,60 @@ enum CaptureParser {
             searchStart = cursor
         }
     }
+
+    #if os(macOS)
+    // MARK: - Time channel: bare time token (macOS-only)
+    //
+    // Detects a free-standing time with no `@` or "at" trigger:
+    //   • meridiem form  — "10am", "2pm", "3:30pm", "9 am"
+    //   • 24-hour colon  — "17:00", "9:30"
+    //
+    // Requires a meridiem OR a colon so bare integers ("20 pages", "section 5",
+    // "in 2 days") never misfire as times. Validation goes through the shared
+    // `parseHourMinute`. The matched span is recorded for stripping so the
+    // event title stays clean ("Team standup tomorrow 10am" → "Team standup").
+    private static func applyBareTimeToken(_ text: String,
+                                           builder: inout TaskDraftBuilder,
+                                           now: Date) {
+        let currentHour = Calendar.current.component(.hour, from: now)
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+
+        struct Hit { let range: NSRange; let digits: String; let period: String? }
+        var hit: Hit?
+
+        // Meridiem form: H[:MM] am|pm  (optional single space before am/pm).
+        if let rx = try? NSRegularExpression(
+            pattern: #"(?<![0-9A-Za-z])(\d{1,2})(?::(\d{2}))? ?(am|pm)(?![A-Za-z])"#,
+            options: .caseInsensitive),
+           let m = rx.firstMatch(in: text, range: full) {
+            let hourStr = ns.substring(with: m.range(at: 1))
+            let minRange = m.range(at: 2)
+            let digits = minRange.location == NSNotFound
+                ? hourStr
+                : "\(hourStr):\(ns.substring(with: minRange))"
+            hit = Hit(range: m.range, digits: digits,
+                      period: ns.substring(with: m.range(at: 3)).lowercased())
+        }
+
+        // 24-hour colon form: HH:MM  (only if no meridiem hit landed earlier).
+        if hit == nil,
+           let rx = try? NSRegularExpression(
+            pattern: #"(?<![0-9A-Za-z:])(\d{1,2}):(\d{2})(?![0-9A-Za-z])"#),
+           let m = rx.firstMatch(in: text, range: full) {
+            let digits = "\(ns.substring(with: m.range(at: 1))):\(ns.substring(with: m.range(at: 2)))"
+            hit = Hit(range: m.range, digits: digits, period: nil)
+        }
+
+        guard let hit,
+              let r = Range(hit.range, in: text),
+              let (hour, minute) = parseHourMinute(hit.digits, period: hit.period,
+                                                   currentHour: hit.period == nil ? currentHour : -1)
+        else { return }
+
+        builder.setTime(hour: hour, minute: minute, range: r)
+    }
+    #endif
 
     /// Maps a digit payload (with or without colon) to validated (h, m).
     private static func parseHourMinute(_ digits: String,

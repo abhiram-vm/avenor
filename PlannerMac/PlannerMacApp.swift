@@ -125,6 +125,8 @@ struct PlannerMacApp: App {
                 .keyboardShortcut("3", modifiers: .command)
             Button("Notes") { nav?.selection = .notes }
                 .keyboardShortcut("4", modifiers: .command)
+            Button("Calendar") { nav?.selection = .calendar }
+                .keyboardShortcut("5", modifiers: .command)
 
             Divider()
 

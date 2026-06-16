@@ -106,7 +106,7 @@ struct Mac_ContentView: View {
     @State private var hoveredPane: Pane?
 
     enum Pane: String, CaseIterable, Identifiable {
-        case overview, tasks, goals, notes
+        case overview, tasks, goals, notes, calendar
         var id: String { rawValue }
 
         var title: String {
@@ -115,6 +115,7 @@ struct Mac_ContentView: View {
             case .tasks:    return "Tasks"
             case .goals:    return "Goals"
             case .notes:    return "Notes"
+            case .calendar: return "Calendar"
             }
         }
 
@@ -125,6 +126,7 @@ struct Mac_ContentView: View {
             case .tasks:    return "checklist"
             case .goals:    return "target"
             case .notes:    return "doc.text"
+            case .calendar: return "calendar"
             }
         }
 
@@ -135,6 +137,7 @@ struct Mac_ContentView: View {
             case .tasks:    return "checklist"   // no filled variant
             case .goals:    return "target"      // no filled variant
             case .notes:    return "doc.text.fill"
+            case .calendar: return "calendar"    // no filled variant
             }
         }
     }
@@ -170,6 +173,7 @@ struct Mac_ContentView: View {
         case .tasks:    Mac_TasksPane()
         case .goals:    Mac_GoalsPane()
         case .notes:    Mac_NotesPane()
+        case .calendar: Mac_CalendarPane()
         }
     }
 

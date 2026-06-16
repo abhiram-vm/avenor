@@ -112,6 +112,25 @@ struct Mac_CaptureBar: View {
                 priority: priority
             )
             modelContext.insert(habit)
+
+        case .calendar(let title, let startDate, let duration):
+            // Calendar events live in EventKit, not SwiftData. Silent create
+            // on the default calendar (no app-switch) — the same shared store
+            // the Calendar pane reads, so the new event surfaces on its next
+            // fetch. Confirmation is the mint flash below, matching every other
+            // capture type. A failed create (e.g. access not yet granted) is
+            // logged by the service and simply skips the flash.
+            let created = EventKitService.shared.createEvent(
+                title: title,
+                startDate: startDate,
+                duration: duration,
+                context: modelContext
+            )
+            if !created {
+                // No SwiftData write and no flash — leave the text in place so
+                // the user can retry once calendar access is granted.
+                return
+            }
         }
 
         // Commit immediately so @Query-backed panes update without waiting for

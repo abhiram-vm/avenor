@@ -8,6 +8,11 @@
 	<!-- Outbound network access for CloudKit / notifications. -->
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- Calendar read/write for the Calendar pane + capture-bar event creation
+	     (EventKit). Required alongside NSCalendarsFullAccessUsageDescription
+	     for the sandbox to permit full calendar access. -->
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
 	<!-- Siri / App Intents (AvenorIntents + AvenorShortcuts are in the Mac target). -->
 	<key>com.apple.developer.siri</key>
 	<true/>
