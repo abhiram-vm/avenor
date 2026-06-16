@@ -47,7 +47,7 @@ struct LivingMeshBackground: View {
 
     @ViewBuilder
     private func field(at t: TimeInterval) -> some View {
-        if #available(iOS 18.0, *) {
+        if #available(iOS 18.0, macOS 15.0, *) {
             MeshGradient(
                 width: 3,
                 height: 3,
@@ -65,7 +65,7 @@ struct LivingMeshBackground: View {
     /// 3×3 grid. Corners pinned; edge-midpoints and the center drift on
     /// de-synced low frequencies so the field warps organically and never
     /// visibly repeats.
-    @available(iOS 18.0, *)
+    @available(iOS 18.0, macOS 15.0, *)
     static func controlPoints(_ t: TimeInterval) -> [SIMD2<Float>] {
         // Small-amplitude wobble around a base coordinate. Frequencies are
         // intentionally incommensurate to defeat obvious periodicity.
@@ -96,7 +96,7 @@ struct LivingMeshBackground: View {
     /// teal anchors the bottom-right, indigo carries the diagonal — matching
     /// the theme's static gradient direction so the transition is invisible
     /// if the field is ever paused.
-    @available(iOS 18.0, *)
+    @available(iOS 18.0, macOS 15.0, *)
     static var meshColors: [Color] {
         [
             palette[0], palette[1], palette[2],

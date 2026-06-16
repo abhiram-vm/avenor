@@ -227,15 +227,3 @@ struct NoteRow: View {
         }
     }
 }
-
-// MARK: - Helper extension for conditional monospaced
-
-extension View {
-    func conditionalMonospaced(_ apply: Bool) -> some View {
-        if apply {
-            return AnyView(self.monospacedDigit())
-        } else {
-            return AnyView(self)
-        }
-    }
-}

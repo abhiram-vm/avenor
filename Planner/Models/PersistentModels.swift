@@ -180,10 +180,19 @@ final class PersistedNote {
     var title: String
     var details: String
 
+    /// Pin / archive state for the macOS knowledge layer. Both carry inline
+    /// `false` defaults so this is a lightweight, CloudKit-safe *additive*
+    /// migration: every legacy row (and every iOS row, which never sets them)
+    /// reads `false`. iOS views ignore both fields entirely.
+    var isPinned: Bool = false
+    var isArchived: Bool = false
+
     init(
         id: UUID = UUID(),
         title: String = "",
         details: String = "",
+        isPinned: Bool = false,
+        isArchived: Bool = false,
         sortOrder: Int = nextDefaultSortOrder(),
         createdAt: Date = .now,
         updatedAt: Date = .now,
@@ -192,6 +201,8 @@ final class PersistedNote {
         self.id = id
         self.title = title
         self.details = details
+        self.isPinned = isPinned
+        self.isArchived = isArchived
         self.sortOrder = sortOrder
         self.createdAt = createdAt
         self.updatedAt = updatedAt

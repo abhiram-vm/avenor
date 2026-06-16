@@ -104,3 +104,15 @@ struct ThemedBackground: View {
     let t: ThemeTokens
     var body: some View { AppBackground() }
 }
+
+// MARK: - View+conditionalMonospaced
+
+extension View {
+    func conditionalMonospaced(_ apply: Bool) -> some View {
+        if apply {
+            return AnyView(self.monospacedDigit())
+        } else {
+            return AnyView(self)
+        }
+    }
+}

@@ -3,11 +3,14 @@ import SwiftData
 
 // MARK: - Mac_OverviewPane
 //
-// Functional stub: today's open tasks, pulled live from SwiftData via @Query.
-// No iOS-only modifiers. Not pixel-matched to the iOS Overview tab yet.
+// Today's open tasks, pulled live from SwiftData via @Query. Each row is
+// completable in place via the leading checkbox, routing through the shared
+// `TaskMutator` (a completed task drops off the "Due Today" list on the next
+// query pass). No iOS-only modifiers.
 
 struct Mac_OverviewPane: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [PersistedTask]
 
     private let calendar = Calendar.autoupdatingCurrent
@@ -24,35 +27,34 @@ struct Mac_OverviewPane: View {
     var body: some View {
         let p = theme.palette
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
+            LazyVStack(alignment: .leading, spacing: 10) {
+                // Display hero — large tight-tracked title, matching the iOS
+                // tab heroes (TodayHeader).
+                Text("Overview")
+                    .font(p.font(.display))
+                    .tracking(p.displayTracking)
+                    .foregroundStyle(p.textPrimary)
+                    .padding(.bottom, 8)
+
                 Text("Due Today")
                     .font(p.font(.micro))
+                    .tracking(p.microTracking)
                     .textCase(.uppercase)
-                    .foregroundStyle(p.textSecondary)
-                    .padding(.top, 4)
+                    .foregroundStyle(p.textTertiary)
+                    .padding(.bottom, 2)
 
                 if dueToday.isEmpty {
-                    Text("No tasks due today.")
-                        .font(p.font(.body))
-                        .foregroundStyle(p.textTertiary)
-                        .padding(.vertical, 24)
+                    StarkEmptyState("No tasks due today.")
                 } else {
                     ForEach(dueToday) { task in
-                        HStack(spacing: 10) {
-                            Circle()
-                                .fill(p.textTertiary)
-                                .frame(width: 5, height: 5)
-                            Text(task.title)
-                                .font(p.font(.body))
-                                .foregroundStyle(p.textPrimary)
-                            Spacer(minLength: 0)
-                            if let due = task.dueDate {
-                                Text(due, format: .dateTime.hour().minute())
-                                    .font(p.font(.micro))
-                                    .foregroundStyle(p.textTertiary)
+                        Mac_TaskRow(
+                            task: task,
+                            onToggleComplete: { TaskMutator.complete(task, in: modelContext) },
+                            onDelete: {
+                                TaskMutator.delete(task, in: modelContext)
+                                try? modelContext.save()
                             }
-                        }
-                        .padding(.vertical, 6)
+                        )
                     }
                 }
             }

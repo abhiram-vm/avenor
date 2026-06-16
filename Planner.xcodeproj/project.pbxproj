@@ -108,6 +108,8 @@
 				Views/CommonViews.swift,
 				Views/GoalIncrementSwipeRow.swift,
 				Views/GoalsViews.swift,
+				Views/Motion/KineticMotion.swift,
+				Views/Motion/LivingMeshBackground.swift,
 				Views/RecurrenceTemplateSheet.swift,
 				Views/SheetComponents.swift,
 				Views/StarkCaptureBar.swift,
@@ -603,7 +605,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMac;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -637,7 +639,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remyavipindas.avenor.PlannerMac;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -12,6 +12,7 @@ struct Mac_SettingsView: View {
 
     var body: some View {
         @Bindable var theme = theme
+        let p = theme.palette
         Form {
             Picker("Theme", selection: $theme.selected) {
                 ForEach(AppThemeCase.allCases) { option in
@@ -20,9 +21,12 @@ struct Mac_SettingsView: View {
                 }
             }
             .pickerStyle(.menu)
+            .tint(Mac_Accent.mint)
+            .font(p.font(.body))
         }
         .formStyle(.grouped)
         .frame(width: 380)
         .padding(20)
+        .themedCanvas(p)
     }
 }

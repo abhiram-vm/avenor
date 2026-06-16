@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import SwiftUI
 import SwiftData
 import os
@@ -29,6 +28,10 @@ private let macLaunchLog = Logger(subsystem: "com.avenor.planner", category: "la
 @main
 struct PlannerMacApp: App {
     @State private var theme = ThemeStore()
+
+    /// The active window's nav state, surfaced from `Mac_ContentView` via
+    /// `focusedSceneValue`. Drives the global menu commands (⌘1/2/3, ⌘N).
+    @FocusedValue(\.macNav) private var nav
 
     // Created eagerly so a schema failure surfaces before any view renders.
     private let container: ModelContainer?
@@ -73,35 +76,66 @@ struct PlannerMacApp: App {
                     .modelContainer(container)
             } else {
                 ZStack {
-                    Color.black.ignoresSafeArea()
+                    DesignTokens.Surface.canvas.ignoresSafeArea()
                     Text("Something went wrong. Please restart Avenor.")
-                        .foregroundStyle(.white)
+                        .foregroundStyle(.white.opacity(0.92))
                         .multilineTextAlignment(.center)
                         .padding()
                 }
             }
         }
         .defaultSize(width: 980, height: 640)
+        // Blend the title bar into the canvas — no default chrome separation.
+        .windowStyle(.hiddenTitleBar)
+        .commands { macCommands }
 
         Settings {
             Mac_SettingsView()
                 .environment(theme)
-=======
-//
-//  PlannerMacApp.swift
-//  PlannerMac
-//
-//  Created by Abhiram Menon on 6/15/26.
-//
+        }
+    }
 
-import SwiftUI
+    // MARK: Global keyboard shortcuts
+    //
+    // Pane switching and capture focus drive the scene-level `Mac_NavState`
+    // exposed via `focusedSceneValue`. ⌘F (search) is intentionally omitted:
+    // no Mac pane currently has a search field, and the brief gates it on one
+    // existing. Escape is handled per-sheet via `.cancelAction` Cancel buttons.
 
-@main
-struct PlannerMacApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
->>>>>>> Stashed changes
+    @CommandsBuilder
+    private var macCommands: some Commands {
+        CommandGroup(replacing: .newItem) {
+            // ⌘N is context-aware: in the Notes pane it creates a new note;
+            // everywhere else it focuses the capture bar.
+            Button("New") {
+                if nav?.selection == .notes {
+                    nav?.newNoteToken = true
+                } else {
+                    nav?.captureFocusToken = true
+                }
+            }
+            .keyboardShortcut("n", modifiers: .command)
+        }
+        CommandMenu("View") {
+            Button("Overview") { nav?.selection = .overview }
+                .keyboardShortcut("1", modifiers: .command)
+            Button("Tasks") { nav?.selection = .tasks }
+                .keyboardShortcut("2", modifiers: .command)
+            Button("Goals") { nav?.selection = .goals }
+                .keyboardShortcut("3", modifiers: .command)
+            Button("Notes") { nav?.selection = .notes }
+                .keyboardShortcut("4", modifiers: .command)
+
+            Divider()
+
+            // Notes-pane commands. Harmless when another pane is active — they
+            // flip nav tokens the Notes pane reads; nothing else observes them.
+            Button("Find in Notes") { nav?.notesFocusSearchToken = true }
+                .keyboardShortcut("f", modifiers: .command)
+            Button("Toggle Backlinks") { nav?.notesShowBacklinks.toggle() }
+                .keyboardShortcut("b", modifiers: [.command, .shift])
+            Button("Reading Mode") { nav?.notesReadingMode.toggle() }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
         }
     }
 }

@@ -13,40 +13,63 @@ struct Mac_CaptureBar: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ThemeStore.self) private var theme
 
-    @State private var text = ""
-    @FocusState private var focused: Bool
+    /// External focus trigger (⌘N). Set to true to focus the bar; the bar
+    /// resets it to false immediately after acquiring focus. Mirrors the iOS
+    /// `StarkCaptureBar.shouldFocus` contract.
+    var shouldFocus: Binding<Bool> = .constant(false)
 
-    /// Accent Mint `#6EE7A8` — the same capture accent used across all themes.
-    private let mint = Color(red: 110 / 255, green: 231 / 255, blue: 168 / 255)
+    @State private var text = ""
+    /// Brief mint border flash on a successful capture, then fades out.
+    @State private var flash = false
+    @FocusState private var focused: Bool
 
     var body: some View {
         let p = theme.palette
+        let shape = RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
         HStack(spacing: 10) {
+            // CLI prompt glyph — the brand mint `>`, constant across themes.
             Text(">")
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundStyle(mint)
+                .foregroundStyle(Mac_Accent.mint)
 
-            TextField("Capture a task, idea, goal, or note…", text: $text)
+            TextField("", text: $text, prompt: prompt(p))
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, weight: .regular, design: .monospaced))
                 .foregroundStyle(p.textPrimary)
-                .tint(mint)
+                .tint(Mac_Accent.mint)
                 .focused($focused)
                 .autocorrectionDisabled()
                 .onSubmit(commit)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(p.rowFill)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(focused ? mint.opacity(0.55) : Color.white.opacity(0.07))
-        )
+        .background(shape.fill(p.rowFill))
+        .overlay(shape.strokeBorder(borderColor(p), lineWidth: 1))
         .animation(.easeInOut(duration: 0.15), value: focused)
+        .animation(.easeInOut(duration: 0.18), value: flash)
         .onAppear { focused = true }
+        .onChange(of: shouldFocus.wrappedValue) { _, newValue in
+            if newValue {
+                focused = true
+                shouldFocus.wrappedValue = false
+            }
+        }
+    }
+
+    // MARK: Prompt + border
+
+    /// Space-Mono-feel placeholder: monospaced, wide tracking, whisper opacity —
+    /// matching the iOS `StarkCaptureBar` prompt.
+    private func prompt(_ p: ThemePalette) -> Text {
+        Text("Capture a task, idea, goal, or note…")
+            .font(.system(size: 14, weight: .regular, design: .monospaced))
+            .tracking(0.6)
+            .foregroundColor(p.textTertiary)
+    }
+
+    private func borderColor(_ p: ThemePalette) -> Color {
+        if flash { return Mac_Accent.mint }
+        return focused ? Mac_Accent.mint.opacity(0.55) : p.hairline
     }
 
     // MARK: Capture routing (mirrors OverviewTabView.commitCapture)
@@ -95,5 +118,11 @@ struct Mac_CaptureBar: View {
         // the autosave coalescing window.
         try? modelContext.save()
         text = ""
+
+        // Brief mint border flash to confirm the capture, then fade back.
+        flash = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            flash = false
+        }
     }
 }
