@@ -1,5 +1,5 @@
 import simd
-import Metal
+import MetalKit
 
 /// CPU mirror of the `Particle` struct in AvenorParticles.metal.
 /// Field order and types MUST match the .metal definition exactly.
@@ -23,8 +23,6 @@ enum ParticleConstants {
     static let count = 1000
     static let maxCount = 1200
 }
-
-import MetalKit
 
 final class ParticleRenderer {
     private let device: MTLDevice
@@ -71,10 +69,11 @@ final class ParticleRenderer {
             renderPipeline = try device.makeRenderPipelineState(descriptor: rp)
         } catch { return nil }
 
-        seedBuffers()
+        guard seedBuffers() else { return nil }
     }
 
-    private func seedBuffers() {
+    @discardableResult
+    private func seedBuffers() -> Bool {
         let n = ParticleConstants.count
         var seed = [Particle]()
         seed.reserveCapacity(n)
@@ -91,6 +90,7 @@ final class ParticleRenderer {
         particleBuffers = (0..<Self.bufferCount).compactMap {
             _ in device.makeBuffer(bytes: seed, length: len, options: .storageModeShared)
         }
+        return particleBuffers.count == Self.bufferCount
     }
 
     func resize(to size: CGSize) {
