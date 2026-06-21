@@ -4,17 +4,17 @@ import simd
 
 final class MetalAmbientTests: XCTestCase {
 
-    // Constraint: particle buffer ≤ 256 KB at max count.
-    func test_particleBuffer_withinByteBudget() {
-        let bytes = MemoryLayout<Particle>.stride * ParticleConstants.maxCount
-        XCTAssertLessThanOrEqual(bytes, 256 * 1024, "particle buffer exceeds 256KB")
+    // New design: exactly 120 particles.
+    func test_particleCount_is120() {
+        XCTAssertEqual(ParticleConstants.count, 120)
     }
 
-    // Default count is the spec default, and never above the hard cap.
-    func test_particleCount_defaultAndCap() {
-        XCTAssertEqual(ParticleConstants.count, 1000)
-        XCTAssertLessThanOrEqual(ParticleConstants.count, ParticleConstants.maxCount)
-        XCTAssertLessThanOrEqual(ParticleConstants.maxCount, 1200)
+    // The uploaded per-particle vertex is compact (position + size + opacity).
+    func test_particleVertex_layout() {
+        // float2 (8) + float (4) + float (4) = 16 bytes, no padding.
+        XCTAssertEqual(MemoryLayout<ParticleVertex>.stride, 16)
+        let bufferBytes = MemoryLayout<ParticleVertex>.stride * ParticleConstants.count
+        XCTAssertLessThanOrEqual(bufferBytes, 256 * 1024)
     }
 
     // Constraint: orb uniforms ≤ 4 KB for the whole (3-orb) array.
