@@ -24,6 +24,7 @@ struct Mac_NotesPane: View {
     @Environment(ThemeStore.self) private var theme
     @Environment(\.modelContext) private var modelContext
     @Environment(Mac_NavState.self) private var nav
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // Active (non-archived) notes, newest-edit first as the base ordering.
     @Query(
@@ -101,8 +102,13 @@ struct Mac_NotesPane: View {
                 Divider().overlay(p.hairline)
                 Mac_BacklinksPanel(note: selectedNote, onSelectNote: { selectedNoteID = $0.id })
                     .frame(width: 240)
+                    .transition(reduceMotion
+                        ? AnyTransition.opacity
+                        : .move(edge: .trailing).combined(with: .opacity))
             }
         }
+        .animation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85),
+                   value: nav.notesShowBacklinks)
     }
 
     private func readingLayout(_ p: ThemePalette) -> some View {
@@ -136,6 +142,7 @@ struct Mac_NotesPane: View {
 
     private func notesList(_ p: ThemePalette) -> some View {
         VStack(spacing: 0) {
+            listHeader(p)
             listToolbar(p)
             Divider().overlay(p.hairline)
 
@@ -164,6 +171,27 @@ struct Mac_NotesPane: View {
             Spacer(minLength: 0)
         }
         .background(p.canvasView)
+    }
+
+    /// Editorial header for the narrow list column — the "Notes" display title
+    /// scaled to fit 240pt, with an asymmetric mono count beside it.
+    private func listHeader(_ p: ThemePalette) -> some View {
+        HStack(alignment: .lastTextBaseline, spacing: 8) {
+            Text("Notes")
+                .font(.system(size: 30, weight: .heavy, design: p.fontDesign))
+                .tracking(-1.2)
+                .foregroundStyle(p.textPrimary)
+            Spacer(minLength: 0)
+            if !notes.isEmpty {
+                Text("\(notes.count)")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .tracking(0.8)
+                    .foregroundStyle(p.textTertiary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 22)
+        .padding(.bottom, 14)
     }
 
     private func listToolbar(_ p: ThemePalette) -> some View {
@@ -298,16 +326,24 @@ struct Mac_NotesPane: View {
 
     private func archive(_ note: PersistedNote) {
         if selectedNoteID == note.id { selectedNoteID = nil }
-        withAnimation(.easeInOut(duration: 0.18)) {
+        if reduceMotion {
             NoteMutator.archive(note, in: modelContext)
+        } else {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                NoteMutator.archive(note, in: modelContext)
+            }
         }
         try? modelContext.save()
     }
 
     private func confirmDelete(_ note: PersistedNote) {
         if selectedNoteID == note.id { selectedNoteID = nil }
-        withAnimation(.easeInOut(duration: 0.18)) {
+        if reduceMotion {
             NoteMutator.delete(note, in: modelContext)
+        } else {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                NoteMutator.delete(note, in: modelContext)
+            }
         }
         try? modelContext.save()
         pendingDelete = nil
@@ -411,6 +447,7 @@ enum NoteSearch {
 
 private struct Mac_NoteListRow: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let note: PersistedNote
     let selected: Bool
     let snippet: String
@@ -427,9 +464,10 @@ private struct Mac_NoteListRow: View {
         let shape = RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
         Button(action: onSelect) {
             HStack(spacing: 0) {
-                // Mint selection rail.
+                // Mint left rail — pinned notes carry it persistently; a
+                // selected note also shows it (selection adds the surface lift).
                 RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(selected ? Mac_Accent.mint : Color.clear)
+                    .fill((note.isPinned || selected) ? Mac_Accent.mint : Color.clear)
                     .frame(width: 2)
                     .padding(.vertical, 4)
 
@@ -469,8 +507,8 @@ private struct Mac_NoteListRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .animation(.easeInOut(duration: 0.12), value: hovering)
-        .animation(.easeInOut(duration: 0.12), value: selected)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: hovering)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: selected)
         .contextMenu {
             Button(note.isPinned ? "Unpin" : "Pin") { onTogglePin() }
             Button("Duplicate") { onDuplicate() }

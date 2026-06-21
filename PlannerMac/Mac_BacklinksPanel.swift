@@ -79,7 +79,15 @@ struct Mac_BacklinksPanel: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(p.canvasView)
+        // The Notes pane's second sanctioned glass moment: ultra-thin material
+        // with a hairline specular top edge.
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(.white.opacity(0.04))
+                .frame(height: 1)
+                .allowsHitTesting(false)
+        }
     }
 
     // MARK: Header
@@ -110,10 +118,10 @@ struct Mac_BacklinksPanel: View {
     private func section<Content: View>(_ label: String, _ p: ThemePalette, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label)
-                .font(p.font(.micro))
-                .tracking(p.microTracking)
+                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .tracking(1.6)
                 .textCase(.uppercase)
-                .foregroundStyle(p.textSecondary)
+                .foregroundStyle(Mac_Accent.violet)
                 .padding(.bottom, 2)
             content()
         }
@@ -161,6 +169,7 @@ struct Mac_BacklinksPanel: View {
 
 private struct Mac_BacklinkRow: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String
     let icon: String
     let tint: Color
@@ -192,6 +201,6 @@ private struct Mac_BacklinkRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .animation(.easeInOut(duration: 0.12), value: hovering)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: hovering)
     }
 }

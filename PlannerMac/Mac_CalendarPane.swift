@@ -23,6 +23,7 @@ enum CalendarViewMode: String, CaseIterable, Identifiable {
 struct Mac_CalendarPane: View {
     @Environment(ThemeStore.self) private var theme
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var allTasks: [PersistedTask]
 
     @State private var eventKit = EventKitService.shared
@@ -60,7 +61,6 @@ struct Mac_CalendarPane: View {
             }
         }
         .themedCanvas(p)
-        .navigationTitle("Calendar")
         .task(id: currentWeekStart) {
             await eventKit.requestAccess()
             reload()
@@ -71,11 +71,17 @@ struct Mac_CalendarPane: View {
 
     private func toolbar(_ p: ThemePalette) -> some View {
         HStack(spacing: 12) {
-            Text(weekLabel)
-                .font(p.font(.title))
-                .fontWeight(.heavy)
-                .tracking(p.displayTracking)
-                .foregroundStyle(p.textPrimary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(monthLabel)
+                    .font(.system(size: 30, weight: .heavy, design: p.fontDesign))
+                    .tracking(-1.2)
+                    .foregroundStyle(p.textPrimary)
+                Text(weekLabel)
+                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                    .tracking(2.0)
+                    .textCase(.uppercase)
+                    .foregroundStyle(p.textTertiary)
+            }
 
             Spacer(minLength: 0)
 
@@ -106,8 +112,12 @@ struct Mac_CalendarPane: View {
 
             // Week / list toggle.
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
+                if reduceMotion {
                     viewMode = viewMode == .week ? .list : .week
+                } else {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        viewMode = viewMode == .week ? .list : .week
+                    }
                 }
             } label: {
                 Image(systemName: viewMode == .week ? "list.bullet" : "calendar")
@@ -220,6 +230,17 @@ struct Mac_CalendarPane: View {
         let start = currentWeekStart.formatted(.dateTime.month(.abbreviated).day())
         let endStr = end.formatted(.dateTime.month(.abbreviated).day())
         return "\(start) – \(endStr)"
+    }
+
+    /// Editorial hero label — the month(s) the visible week spans.
+    private var monthLabel: String {
+        guard let end = calendar.date(byAdding: .day, value: 6, to: currentWeekStart) else { return "Calendar" }
+        let startMonth = currentWeekStart.formatted(.dateTime.month(.wide))
+        let endMonth = end.formatted(.dateTime.month(.wide))
+        if startMonth == endMonth { return startMonth }
+        let startAbbr = currentWeekStart.formatted(.dateTime.month(.abbreviated))
+        let endAbbr = end.formatted(.dateTime.month(.abbreviated))
+        return "\(startAbbr) / \(endAbbr)"
     }
 
     /// Monday of the week containing today. Calendar weeks vary by locale, so we

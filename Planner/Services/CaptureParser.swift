@@ -177,6 +177,19 @@ enum CaptureIntent: Equatable {
     /// (`OverviewTabView.commitCapture`), which must stay exhaustive and is
     /// off-limits, never sees a new case — iOS routing is byte-identical.
     case calendar(title: String, startDate: Date, duration: TimeInterval)
+
+    /// A measurable goal. **macOS-only.** Produced when the capture text carries
+    /// a numeric target ("read 50 pages", "save $5000 by august") with no
+    /// recurrence, no hashtag, no priority bang, and no resolvable date/time
+    /// (those route to habit / idea / todo / calendar respectively). `unit` is
+    /// `nil` when detection is ambiguous — the Mac capture bar then presents
+    /// `Mac_GoalUnitPickerSheet` to pick one. `dueDate` is best-effort
+    /// ("by august" → last day of August); it is not persisted today because
+    /// `PersistedGoal` has no deadline field.
+    ///
+    /// Gated behind `#if os(macOS)` so the iOS capture switch stays exhaustive
+    /// and byte-identical — iOS never sees this case.
+    case goal(title: String, targetValue: Double, unit: String?, dueDate: Date?)
     #endif
 }
 
@@ -365,6 +378,18 @@ enum CaptureParser {
             }
             return .todo(title: title, dueDate: due, priority: pri)
         }
+
+        #if os(macOS)
+        // macOS-only goal routing. Inserted after recurrence + hashtag (both
+        // already returned above) and after the date/time block (so a timed
+        // capture books a calendar event, never a goal). A numeric target with
+        // no priority bang and no resolvable date → a measurable goal
+        // ("read 50 pages", "save $5000 by august"). iOS excludes this whole
+        // block, so its routing stays byte-identical.
+        if pri == nil, let goal = detectGoal(from: title, now: now) {
+            return goal
+        }
+        #endif
 
         // No tokens, no priority — long-form text routes to note.
         if pri == nil, wordCount(of: title) > 3 {
@@ -1219,6 +1244,113 @@ enum CaptureParser {
         }
         return false
     }
+
+    #if os(macOS)
+    // MARK: - Goal detection (macOS-only)
+    //
+    // Recognizes a measurable goal from capture text carrying a numeric target.
+    // Called from `parse` only after recurrence, hashtag, and the date/time
+    // block have each had their chance, so a goal never shadows a habit, idea,
+    // calendar event, or dated task. Returns `nil` when there's no number,
+    // leaving the capture to fall through to note / todo.
+    //
+    // Rules (all required):
+    //   • A number is present (integer/decimal, optional `$` prefix, optional
+    //     `k` thousands suffix). Mandatory — no number, no goal.
+    //   • Unit is detected from a small keyword table; `nil` when none matches
+    //     (the Mac capture handler then prompts for one).
+    //   • Optional "by <month>" books a soft due date (last day of the month).
+    //
+    // The numeric token, unit word, and due-date phrase are stripped to leave a
+    // clean title ("read 50 pages" → "read").
+    private static func detectGoal(from text: String, now: Date) -> CaptureIntent? {
+        let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+
+        // Numeric target: optional `$`, digits with optional decimal, optional `k`.
+        guard let numRx = try? NSRegularExpression(
+            pattern: #"(?<![\w.])(\$)?(\d+(?:\.\d+)?)(k)?(?![\w.])"#,
+            options: .caseInsensitive),
+            let numMatch = numRx.firstMatch(in: text, range: full),
+            let valueRange = Range(numMatch.range(at: 2), in: text),
+            var value = Double(text[valueRange])
+        else { return nil }
+
+        let hasDollar = numMatch.range(at: 1).location != NSNotFound
+        let hasK = numMatch.range(at: 3).location != NSNotFound
+        if hasK { value *= 1000 }
+
+        // Spans to strip from the title (number always; unit + due optional).
+        var stripRanges: [Range<String.Index>] = []
+        if let r = Range(numMatch.range, in: text) { stripRanges.append(r) }
+
+        // Unit detection (first match wins; ordered per spec).
+        let lower = text.lowercased()
+        var unit: String? = nil
+        let unitTable: [(needles: [String], unit: String)] = [
+            (["pages", "pg", "p"], "pages"),
+            (["words", "word"], "words"),
+            (["dollars", "usd"], "dollars"),
+            (["miles", "mi"], "miles"),
+            (["km"], "km"),
+            (["hours", "hrs", "hr"], "hours"),
+            (["reps", "rep", "times"], "reps"),
+        ]
+        outer: for entry in unitTable {
+            for needle in entry.needles {
+                if let r = wholeWordRange(of: needle, in: lower) {
+                    unit = entry.unit
+                    stripRanges.append(mapRange(r, fromLower: lower, original: text))
+                    break outer
+                }
+            }
+        }
+        // Currency / thousands fallbacks when no explicit unit word matched.
+        if unit == nil, hasDollar { unit = "dollars" }
+        if unit == nil, hasK { unit = "words" }
+
+        // Optional "by <month>" → last day of that month.
+        var dueDate: Date? = nil
+        if let monthRx = try? NSRegularExpression(
+            pattern: #"\bby\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b"#,
+            options: .caseInsensitive),
+            let m = monthRx.firstMatch(in: text, range: full),
+            let monthRange = Range(m.range(at: 1), in: text),
+            let endOfMonth = lastDayOfMonth(String(text[monthRange]), now: now) {
+            dueDate = endOfMonth
+            if let r = Range(m.range, in: text) { stripRanges.append(r) }
+        }
+
+        // Build the clean title by stripping the matched spans.
+        let title = collapseWhitespace(strip(matchedRanges: stripRanges, from: text))
+        return .goal(title: title, targetValue: value, unit: unit, dueDate: dueDate)
+    }
+
+    /// Last moment of the named month, this year (or next year if the month has
+    /// already fully passed). Powers "by august"-style soft goal deadlines.
+    private static func lastDayOfMonth(_ name: String, now: Date) -> Date? {
+        let months = ["jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
+                      "jul": 7, "aug": 8, "sep": 9, "oct": 10, "nov": 11, "dec": 12]
+        guard let month = months[String(name.lowercased().prefix(3))] else { return nil }
+        let cal = Calendar.autoupdatingCurrent
+        var comps = cal.dateComponents([.year], from: now)
+        comps.month = month
+        comps.day = 1
+        guard var first = cal.date(from: comps) else { return nil }
+        // If that month already ended this year, roll to next year.
+        if let end = cal.date(byAdding: DateComponents(month: 1, day: -1), to: first), end < now {
+            comps.year = (comps.year ?? 0) + 1
+            guard let bumped = cal.date(from: comps) else { return nil }
+            first = bumped
+        }
+        guard let range = cal.range(of: .day, in: .month, for: first) else { return nil }
+        var lastComps = cal.dateComponents([.year, .month], from: first)
+        lastComps.day = range.count
+        lastComps.hour = 23
+        lastComps.minute = 59
+        return cal.date(from: lastComps)
+    }
+    #endif
 
     // MARK: - Range helpers
 

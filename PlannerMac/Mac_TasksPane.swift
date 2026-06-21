@@ -13,38 +13,75 @@ struct Mac_TasksPane: View {
     @Environment(ThemeStore.self) private var theme
     @Environment(\.modelContext) private var modelContext
     @Environment(Mac_NavState.self) private var nav
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \PersistedTask.sortOrder, order: .forward) private var tasks: [PersistedTask]
 
     @State private var editingTask: PersistedTask?
     /// Task id currently flashing a mint ring after a cross-pane navigation.
     @State private var flashID: UUID?
 
+    // Inline search, revealed on ⌘F.
+    @State private var showSearch = false
+    @State private var searchQuery = ""
+    @FocusState private var searchFocused: Bool
+
+    private var openCount: Int { tasks.filter { !($0.isDone ?? false) }.count }
+
+    private var filteredTasks: [PersistedTask] {
+        let q = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return tasks }
+        return tasks.filter { $0.title.localizedCaseInsensitiveContains(q) }
+    }
+
     var body: some View {
         let p = theme.palette
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Mac_DisplayTitle(
+                        title: "Tasks",
+                        metaLabel: "\(tasks.count) TOTAL",
+                        accentCallout: openCount == 0 ? nil : "\(openCount) OPEN"
+                    )
+                    .padding(.bottom, showSearch ? 18 : 44)
+
+                    if showSearch {
+                        searchField(p)
+                            .padding(.bottom, 26)
+                            .transition(reduceMotion
+                                ? AnyTransition.opacity
+                                : .opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+                    }
+
                     if tasks.isEmpty {
-                        StarkEmptyState("Empty.", footnote: "Press ⌘N to capture your first item.")
+                        Mac_CinematicEmpty(headline: "no\ntasks yet", footnote: "Press ⌘N to capture your first.")
+                            .padding(.top, 8)
+                    } else if filteredTasks.isEmpty {
+                        StarkEmptyState("No matches.", footnote: "Try a different search.")
                     } else {
-                        ForEach(tasks) { task in
-                            Mac_TaskRow(
-                                task: task,
-                                onToggleComplete: { toggle(task, isDone: task.isDone ?? false) },
-                                onEdit: { editingTask = task },
-                                onDelete: {
-                                    TaskMutator.delete(task, in: modelContext)
-                                    try? modelContext.save()
-                                },
-                                highlighted: flashID == task.id
-                            )
-                            .id(task.id)
+                        LazyVStack(alignment: .leading, spacing: 10) {
+                            ForEach(filteredTasks) { task in
+                                Mac_TaskRow(
+                                    task: task,
+                                    onToggleComplete: { toggle(task, isDone: task.isDone ?? false) },
+                                    onEdit: { editingTask = task },
+                                    onDelete: {
+                                        TaskMutator.delete(task, in: modelContext)
+                                        try? modelContext.save()
+                                    },
+                                    highlighted: flashID == task.id
+                                )
+                                .id(task.id)
+                            }
                         }
                     }
                 }
-                .padding(24)
+                .padding(.horizontal, 56)
+                .padding(.top, 60)
+                .padding(.bottom, 48)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: showSearch)
             .onChange(of: nav.pendingFocus) { _, target in
                 guard case .task(let id)? = target else { return }
                 reveal(id, proxy: proxy)
@@ -54,21 +91,65 @@ struct Mac_TasksPane: View {
             }
         }
         .themedCanvas(p)
-        .navigationTitle("Tasks")
+        .onChange(of: nav.tasksFocusSearchToken) { _, v in
+            if v {
+                nav.tasksFocusSearchToken = false
+                showSearch = true
+                searchFocused = true
+            }
+        }
         .sheet(item: $editingTask) { task in
             Mac_EditTaskSheet(task: task)
         }
     }
 
+    // MARK: Inline search field
+
+    private func searchField(_ p: ThemePalette) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
+        return HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(p.textTertiary)
+            TextField("", text: $searchQuery, prompt:
+                Text("Filter tasks…")
+                    .font(.system(size: 13, weight: .regular, design: .monospaced))
+            )
+            .textFieldStyle(.plain)
+            .font(.system(size: 14, weight: .regular, design: p.fontDesign))
+            .foregroundStyle(p.textPrimary)
+            .tint(Mac_Accent.mint)
+            .focused($searchFocused)
+            Button {
+                searchQuery = ""
+                showSearch = false
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(p.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .help("Close search")
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 38)
+        .background(shape.fill(p.rowFill))
+        .overlay(shape.strokeBorder(searchFocused ? Mac_Accent.mint.opacity(0.5) : p.hairline, lineWidth: 1))
+        .frame(maxWidth: 420, alignment: .leading)
+    }
+
     /// Scroll the requested task into view, flash its ring, then clear the
     /// nav token so the same target can be requested again later.
     private func reveal(_ id: UUID, proxy: ScrollViewProxy) {
-        withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .center) }
+        if reduceMotion { proxy.scrollTo(id, anchor: .center) }
+        else { withAnimation(.easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .center) } }
         flashID = id
         nav.pendingFocus = nil
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_400_000_000)
-            if flashID == id { withAnimation(.easeInOut(duration: 0.2)) { flashID = nil } }
+            guard flashID == id else { return }
+            if reduceMotion { flashID = nil }
+            else { withAnimation(.easeInOut(duration: 0.2)) { flashID = nil } }
         }
     }
 

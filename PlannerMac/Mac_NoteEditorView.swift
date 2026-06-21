@@ -67,6 +67,7 @@ private struct Mac_NoteEditorBody: View {
     @Environment(ThemeStore.self) private var theme
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let note: PersistedNote
     var resolver: MentionResolver
@@ -133,7 +134,8 @@ private struct Mac_NoteEditorBody: View {
                 .focused($titleFocused)
 
             Button {
-                withAnimation(.easeInOut(duration: 0.18)) { isPreview.toggle() }
+                if reduceMotion { isPreview.toggle() }
+                else { withAnimation(.easeInOut(duration: 0.18)) { isPreview.toggle() } }
             } label: {
                 Image(systemName: isPreview ? "eye.fill" : "pencil")
                     .font(.system(size: 13, weight: .semibold))

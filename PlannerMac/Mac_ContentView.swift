@@ -3,14 +3,12 @@ import Observation
 
 // MARK: - Mac_Accent
 //
-// The single source of truth for Avenor's brand mint (`#6EE7A8`). This color
-// is intentionally theme-independent: it is the capture / focus identity
-// accent and stays constant across all four palettes, exactly as the iOS app
-// treats it. Every Mac surface that needs mint reads it from here — there are
-// no other mint literals in the Mac target.
-//
-// (Long-term home would be `DesignTokens.swift`, but that file is out of scope
-// for this design pass; this is the centralized within-scope resolution.)
+// The single source of truth for Avenor's brand mint (`#6EE7A8`). This color is
+// intentionally theme-independent: it is the capture / focus identity accent and
+// stays constant across all four palettes, exactly as the iOS app treats it.
+// Every Mac surface that needs mint reads it from here. The companion violet
+// (`#7C3AED`, ideas / backlinks) lives in Mac_DesignKit.swift. These two are the
+// only hardcoded color literals permitted in the Mac target.
 enum Mac_Accent {
     static let mint = Color(red: 110 / 255, green: 231 / 255, blue: 168 / 255)
 }
@@ -20,7 +18,7 @@ enum Mac_Accent {
 // Lightweight observable that holds the active pane and a capture-focus token.
 // Owned by `Mac_ContentView`, injected into the environment, and exposed to the
 // scene's `.commands` via `focusedSceneValue` so global keyboard shortcuts
-// (⌘1/2/3, ⌘N) can drive navigation and focus the capture bar from anywhere.
+// (⌘1–5, ⌘N, ⌘F) can drive navigation and focus from anywhere.
 @Observable
 final class Mac_NavState {
     var selection: Mac_ContentView.Pane = .overview
@@ -32,16 +30,18 @@ final class Mac_NavState {
     /// into view, briefly flashes it, then clears the token back to `nil`.
     var pendingFocus: Mac_FocusTarget? = nil
 
-    // MARK: Notes-pane command tokens
+    // MARK: Pane-local command tokens
     //
-    // The Notes pane's keyboard commands live in the app menu bar (the most
-    // reliable place for macOS shortcuts) but act on pane-local UI. These
-    // nav-level tokens bridge the two: the menu flips a token, the Notes pane
-    // observes it and resets it. They're inert when any other pane is shown.
+    // Keyboard commands live in the app menu bar (the most reliable place for
+    // macOS shortcuts) but act on pane-local UI. These nav-level tokens bridge
+    // the two: the menu flips a token, the owning pane observes and resets it.
+    // They're inert when any other pane is shown.
 
     /// ⌘N while the Notes pane is active → create + select a blank note.
     var newNoteToken: Bool = false
-    /// ⌘F → focus the notes search field.
+    /// ⌘F in the Tasks pane → reveal + focus the inline task search field.
+    var tasksFocusSearchToken: Bool = false
+    /// ⌘F in the Notes pane → focus the notes search field.
     var notesFocusSearchToken: Bool = false
     /// ⌘⇧B → show / hide the backlinks column.
     var notesShowBacklinks: Bool = false
@@ -89,163 +89,220 @@ extension FocusedValues {
 
 // MARK: - Mac_ContentView
 //
-// macOS root layout. Replaces the iOS `TabView` (ContentView) with a custom
-// sidebar split. The natural-language capture bar sits ABOVE the split so it's
-// always reachable, exactly like the iOS overview bar.
+// macOS root layout. A narrow 48pt icon rail on the left, the active pane
+// filling the center, and the glass capture bar pinned to the BOTTOM of the
+// content column — the window's center of gravity. The film grain is composited
+// once here, over everything, never per pane.
 //
-// The sidebar is a hand-built button rail — NOT a native `List(selection:)` —
-// so it carries the mint selection accent instead of the system-blue highlight,
-// in keeping with Avenor's "no native List" ethos.
-//
-// First Mac release scope: Capture + Overview + Tasks + Goals. Notes and
-// Calendar are deferred, so the sidebar intentionally lists only three panes.
+// No `NavigationSplitView`, no native `List`: the rail is a hand-built button
+// column carrying the mint selection accent, and panes crossfade with a blur on
+// switch. This is the "nothing like a default SwiftUI app" layer.
 
 struct Mac_ContentView: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var nav = Mac_NavState()
-    @State private var hoveredPane: Pane?
+    @State private var hoveredItem: RailItem?
 
     enum Pane: String, CaseIterable, Identifiable {
-        case overview, tasks, goals, notes, calendar
+        case overview, tasks, goals, notes, calendar, routines
         var id: String { rawValue }
 
         var title: String {
             switch self {
-            case .overview: return "Overview"
-            case .tasks:    return "Tasks"
-            case .goals:    return "Goals"
-            case .notes:    return "Notes"
-            case .calendar: return "Calendar"
+            case .overview:  return "Overview"
+            case .tasks:     return "Tasks"
+            case .goals:     return "Goals"
+            case .notes:     return "Notes"
+            case .calendar:  return "Calendar"
+            case .routines:  return "Routines"
             }
         }
 
         /// Outline glyph for the inactive state.
         var glyph: String {
             switch self {
-            case .overview: return "square.grid.2x2"
-            case .tasks:    return "checklist"
-            case .goals:    return "target"
-            case .notes:    return "doc.text"
-            case .calendar: return "calendar"
+            case .overview:  return "house"
+            case .tasks:     return "checkmark.circle"
+            case .goals:     return "target"
+            case .notes:     return "doc.text"
+            case .calendar:  return "calendar"
+            case .routines:  return "flame"
             }
         }
 
         /// Filled glyph for the selected state, where a `.fill` variant exists.
         var glyphSelected: String {
             switch self {
-            case .overview: return "square.grid.2x2.fill"
-            case .tasks:    return "checklist"   // no filled variant
-            case .goals:    return "target"      // no filled variant
-            case .notes:    return "doc.text.fill"
-            case .calendar: return "calendar"    // no filled variant
+            case .overview:  return "house.fill"
+            case .tasks:     return "checkmark.circle.fill"
+            case .goals:     return "target"
+            case .notes:     return "doc.text.fill"
+            case .calendar:  return "calendar"
+            case .routines:  return "flame.fill"
             }
         }
+    }
+
+    /// Items in the icon rail — panes plus the settings gear at the foot.
+    enum RailItem: Hashable {
+        case pane(Pane)
+        case settings
     }
 
     var body: some View {
         let p = theme.palette
-        VStack(spacing: 0) {
-            Mac_CaptureBar(shouldFocus: $nav.captureFocusToken)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+        ZStack {
+            p.canvasView
 
-            RowSeparator()
-
-            NavigationSplitView {
+            HStack(spacing: 0) {
                 sidebar(p)
-                    .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
-            } detail: {
-                detail
+
+                VStack(spacing: 0) {
+                    paneContent(p)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    RowSeparator()
+
+                    Mac_CaptureBar(shouldFocus: $nav.captureFocusToken)
+                }
             }
+
+            // Film grain — composited once, over the whole window.
+            Mac_FilmGrain()
         }
-        .frame(minWidth: 900, minHeight: 600)
-        .themedCanvas(p)
+        .frame(minWidth: 1100, minHeight: 700)
         .environment(nav)
         .focusedSceneValue(\.macNav, nav)
     }
 
-    // MARK: Detail
+    // MARK: Pane content (blur-fade crossfade on switch)
+
+    private func paneContent(_ p: ThemePalette) -> some View {
+        ZStack {
+            detail
+                .id(nav.selection)
+                .transition(reduceMotion ? AnyTransition.opacity : AnyTransition.macBlurFade)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: nav.selection)
+    }
 
     @ViewBuilder
     private var detail: some View {
         switch nav.selection {
-        case .overview: Mac_OverviewPane()
-        case .tasks:    Mac_TasksPane()
-        case .goals:    Mac_GoalsPane()
-        case .notes:    Mac_NotesPane()
-        case .calendar: Mac_CalendarPane()
+        case .overview:  Mac_OverviewPane()
+        case .tasks:     Mac_TasksPane()
+        case .goals:     Mac_GoalsPane()
+        case .notes:     Mac_NotesPane()
+        case .calendar:  Mac_CalendarPane()
+        case .routines:  Mac_RoutinesPane()
         }
     }
 
-    // MARK: Sidebar (custom button rail)
+    // MARK: Sidebar — 48pt icon rail
 
     private func sidebar(_ p: ThemePalette) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 6) {
             ForEach(Pane.allCases) { pane in
-                navButton(pane, palette: p)
+                railButton(.pane(pane), palette: p)
             }
             Spacer(minLength: 0)
+            railButton(.settings, palette: p)
         }
-        .padding(.horizontal, 10)
-        .padding(.top, 16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Top inset clears the floating traffic lights; bottom breathes.
+        .padding(.top, 34)
+        .padding(.bottom, 14)
+        .frame(width: 48)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(p.canvasView)
+        // Right-edge hairline — the rail reads as a column, not a panel.
+        .overlay(alignment: .trailing) {
+            Rectangle().fill(p.hairline).frame(width: 0.5)
+        }
     }
 
-    private func navButton(_ pane: Pane, palette p: ThemePalette) -> some View {
-        let selected = nav.selection == pane
-        let hovered = hoveredPane == pane
-        return Button {
-            nav.selection = pane
-        } label: {
-            HStack(spacing: 10) {
-                // Mint left accent mark for the selected pane (mirrors the iOS
-                // task-row rail as the "this is active" signal).
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(selected ? Mac_Accent.mint : Color.clear)
-                    .frame(width: 2, height: 16)
+    @ViewBuilder
+    private func railButton(_ item: RailItem, palette p: ThemePalette) -> some View {
+        let selected: Bool = {
+            if case .pane(let pane) = item { return nav.selection == pane }
+            return false
+        }()
+        let hovered = hoveredItem == item
 
-                Image(systemName: selected ? pane.glyphSelected : pane.glyph)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(selected ? Mac_Accent.mint : p.textSecondary)
-                    .frame(width: 20)
-
-                Text(pane.title)
-                    .font(p.font(.body))
-                    .foregroundStyle(selected ? Mac_Accent.mint : p.textSecondary)
-
-                Spacer(minLength: 0)
+        Button {
+            switch item {
+            case .pane(let pane): nav.selection = pane
+            case .settings: break   // handled by the SettingsLink overlay
             }
-            .padding(.vertical, 7)
-            .padding(.trailing, 8)
-            .background(
+        } label: {
+            ZStack {
+                // Selected fill — a mint pill behind the glyph.
                 RoundedRectangle(cornerRadius: DesignTokens.Radius.small, style: .continuous)
-                    .fill(
-                        selected
-                            ? Mac_Accent.mint.opacity(0.12)
-                            : (hovered ? p.chromeSurface : Color.clear)
-                    )
-            )
+                    .fill(selected ? Mac_Accent.mint.opacity(0.08) : (hovered ? p.chromeSurface : .clear))
+                    .frame(width: 32, height: 32)
+
+                Image(systemName: glyph(for: item, selected: selected))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(glyphColor(for: item, selected: selected, hovered: hovered, palette: p))
+            }
+            .frame(width: 48, height: 38)
+            // 2pt mint accent mark hugging the left edge of the selected item.
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 1, style: .continuous)
+                    .fill(selected ? Mac_Accent.mint : .clear)
+                    .frame(width: 2, height: 18)
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { hoveredPane = $0 ? pane : (hoveredPane == pane ? nil : hoveredPane) }
-        .animation(.easeInOut(duration: 0.12), value: selected)
-        .animation(.easeInOut(duration: 0.12), value: hovered)
+        .help(helpText(for: item))
+        .onHover { hoveredItem = $0 ? item : (hoveredItem == item ? nil : hoveredItem) }
+        // Hover is a direct state — no animation, per the brief.
+        .overlay {
+            // SettingsLink hosts Mac_SettingsView; transparent, same hit target.
+            if case .settings = item {
+                SettingsLink { Color.clear.contentShape(Rectangle()) }
+                    .buttonStyle(.plain)
+                    .frame(width: 48, height: 38)
+            }
+        }
+    }
+
+    private func glyph(for item: RailItem, selected: Bool) -> String {
+        switch item {
+        case .pane(let pane): return selected ? pane.glyphSelected : pane.glyph
+        case .settings: return "gearshape"
+        }
+    }
+
+    private func glyphColor(for item: RailItem, selected: Bool, hovered: Bool, palette p: ThemePalette) -> Color {
+        if selected { return Mac_Accent.mint }
+        if hovered { return p.textSecondary }
+        return p.textTertiary
+    }
+
+    private func helpText(for item: RailItem) -> String {
+        switch item {
+        case .pane(let pane): return pane.title
+        case .settings: return "Settings"
+        }
     }
 }
 
 // MARK: - Mac_TaskRow
 //
-// Shared task row consumed by both the Tasks and Overview panes. Copies the
-// iOS `TaskRow` anatomy (Planner/Views/TasksViews.swift) — 2pt type-colored
-// left rail, uppercase micro-tracked meta strip, square checkbox, trailing
-// chevron — translated to a self-contained Mac card with a hover lift and a
-// right-click context menu. All mutation routes through the caller's closures
-// (which call the shared service layer); the row never touches SwiftData.
+// Shared task row consumed by the Tasks and Overview panes. (Defined here, in
+// Mac_ContentView.swift, by design — not split into its own file.) Anatomy
+// mirrors the iOS `TaskRow`, scaled up for the Mac pointer: a 2pt type-colored
+// rail flush to the left edge, an uppercase micro meta strip, a square checkbox,
+// the title, and a trailing chevron. Hover lifts the surface; completing fades
+// the row to 60% and bounces the checkmark. Right-click exposes complete / edit
+// / delete. All mutation routes through the caller's closures (the service
+// layer); the row never touches SwiftData.
 
 struct Mac_TaskRow: View {
     @Environment(ThemeStore.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let task: PersistedTask
     var onToggleComplete: () -> Void
     var onEdit: (() -> Void)? = nil
@@ -265,21 +322,27 @@ struct Mac_TaskRow: View {
             rail(p)
             content(p)
         }
+        .frame(minHeight: 56)
         .background(shape.fill(hovering ? p.chromeSurface : p.rowFill))
-        .overlay(shape.strokeBorder(highlighted ? Mac_Accent.mint : p.hairline, lineWidth: highlighted ? 1.5 : 1))
+        .overlay(shape.strokeBorder(highlighted ? Mac_Accent.mint : p.hairline,
+                                    lineWidth: highlighted ? 1.5 : 1))
         .clipShape(shape)
+        .opacity(isDone ? 0.6 : 1)
         .onHover { hovering = $0 }
-        .animation(.easeInOut(duration: 0.12), value: hovering)
-        .animation(.easeInOut(duration: 0.2), value: highlighted)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovering)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: isDone)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: highlighted)
         .contextMenu {
-            Button(isDone ? "Mark Incomplete" : "Complete") { onToggleComplete() }
+            Button { onToggleComplete() } label: {
+                Label(isDone ? "Mark Incomplete" : "Complete", systemImage: "checkmark")
+            }
             if let onEdit { Button("Edit…") { onEdit() } }
             Divider()
             Button("Delete", role: .destructive) { onDelete() }
         }
     }
 
-    // MARK: Accent rail (2pt; 3pt + accent glow for a live P1)
+    // MARK: Accent rail (2pt; 3pt for a live P1)
 
     private func rail(_ p: ThemePalette) -> some View {
         Rectangle()
@@ -288,21 +351,27 @@ struct Mac_TaskRow: View {
             .frame(maxHeight: .infinity)
     }
 
+    /// todo → mint, idea → violet (brand literals); reminder → token amber.
+    /// Done rows go tertiary; a live P1 takes the palette accent.
     private func railColor(_ p: ThemePalette) -> Color {
         if isDone { return p.textTertiary }
         if isHighPriority { return p.accent }
-        return task.type.tint.opacity(0.85)
+        switch task.type {
+        case .todo: return Mac_Accent.mint
+        case .idea: return Mac_Accent.violet
+        case .reminder: return DesignTokens.Accent.reminder
+        }
     }
 
     // MARK: Content
 
     private func content(_ p: ThemePalette) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             metaStrip(p)
             titleRow(p)
         }
-        .padding(.leading, 14)
-        .padding(.trailing, 12)
+        .padding(.leading, 16)
+        .padding(.trailing, 14)
         .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -312,23 +381,21 @@ struct Mac_TaskRow: View {
     private func metaStrip(_ p: ThemePalette) -> some View {
         HStack(spacing: 0) {
             metaToken(task.type.pillTitle, palette: p)
-
             if let dateMeta {
                 Text("·")
                     .font(p.font(.micro))
                     .foregroundStyle(p.textTertiary)
                     .padding(.horizontal, 8)
-                metaToken(dateMeta, palette: p, monospaced: true)
+                metaToken(dateMeta, palette: p)
             }
-
             Spacer(minLength: 0)
         }
     }
 
-    private func metaToken(_ text: String, palette p: ThemePalette, monospaced: Bool = false) -> some View {
+    private func metaToken(_ text: String, palette p: ThemePalette) -> some View {
         Text(text)
-            .font(p.font(.micro))
-            .tracking(p.microTracking)
+            .font(.system(size: 9, weight: .semibold, design: .monospaced))
+            .tracking(1.4)
             .textCase(.uppercase)
             .monospacedDigit()
             .foregroundStyle(p.textTertiary)
@@ -342,14 +409,15 @@ struct Mac_TaskRow: View {
             Button(action: onToggleComplete) {
                 Image(systemName: isDone ? "checkmark.square.fill" : "square")
                     .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(isDone ? p.textPrimary : p.textTertiary)
+                    .foregroundStyle(isDone ? Mac_Accent.mint : p.textTertiary)
                     .contentTransition(.symbolEffect(.replace))
+                    .symbolEffect(.bounce, value: isDone)
                     .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
 
             Text(task.title.isEmpty ? "Untitled" : task.title)
-                .font(p.font(.headline))
+                .font(.system(size: 16, weight: .medium, design: p.fontDesign))
                 .tracking(p.headlineTracking)
                 .foregroundStyle(isDone ? p.textTertiary : p.textPrimary)
                 .strikethrough(isDone, color: p.textTertiary)
@@ -360,6 +428,7 @@ struct Mac_TaskRow: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(p.textTertiary)
+                .opacity(hovering ? 1 : 0.55)
         }
     }
 
