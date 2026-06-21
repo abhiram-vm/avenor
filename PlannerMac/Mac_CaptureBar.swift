@@ -52,6 +52,7 @@ struct Mac_CaptureBar: View {
         }
         .padding(.horizontal, 22)
         .frame(height: 60)
+        .frame(maxWidth: .infinity)
         .background {
             // Mint focus bloom — a soft radial behind the glass, idle-invisible.
             shape
@@ -68,14 +69,21 @@ struct Mac_CaptureBar: View {
                 .padding(-8)
         }
         .background(shape.fill(.ultraThinMaterial))
-        .background(
-            MetalParticleViewRepresentable(view: particleView, reduceMotion: reduceMotion)
-                .allowsHitTesting(false)
-                .clipShape(shape)
-        )
         .overlay(specular(shape))
         .overlay(shape.strokeBorder(borderColor(p), lineWidth: flash ? 1.5 : 1))
         .clipShape(shape)
+        // Particle field — sits BEHIND the glass (added after the bloom/material
+        // so it composites underneath), and is intentionally taller than the bar
+        // (≈52pt of headroom above its top) so particles have room to drift
+        // upward. Placed AFTER `.clipShape(shape)` so the bar's rounded clip never
+        // crops it; it is clipped only to its OWN frame. Never intercepts input.
+        .background(alignment: .bottom) {
+            MetalParticleViewRepresentable(view: particleView, reduceMotion: reduceMotion)
+                .frame(maxWidth: .infinity)
+                .frame(height: 112)
+                .clipped(antialiased: false)
+                .allowsHitTesting(false)
+        }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: focused)
