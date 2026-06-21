@@ -124,6 +124,10 @@ final class ParticleRenderer {
               let rpd = view.currentRenderPassDescriptor,
               let cmd = queue.makeCommandBuffer() else { semaphore.signal(); return }
 
+        // Nothing to draw until the first real drawable size has seeded the field;
+        // never render 120 verts from an unwritten buffer. Keep the semaphore balanced.
+        guard !particles.isEmpty else { semaphore.signal(); return }
+
         let now = CACurrentMediaTime()
         let dt = Float(min(now - lastTime, 1.0 / 20.0))   // clamp first/long frames
         lastTime = now
