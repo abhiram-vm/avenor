@@ -23,23 +23,23 @@ func lissajousCenter(base: SIMD2<Float>,
 }
 
 struct OrbConfig {
-    var base: SIMD2<Float>
-    var amplitude: SIMD2<Float>
-    var freq: SIMD2<Float>
+    var base: SIMD2<Float>       // relative 0..1 within the orb band
+    var amplitude: SIMD2<Float>  // Lissajous amplitude (px)
+    var freq: SIMD2<Float>       // rad/s — 0.105..0.140 ⇒ 45..60s cycle
     var phase: SIMD2<Float>
-    var radius: Float
+    var radius: Float            // px
     var opacity: Float
     var color: SIMD4<Float>
 }
 
 final class OrbRenderer {
-    static let mint   = SIMD4<Float>(0.431, 0.906, 0.659, 1.0)
-    static let violet = SIMD4<Float>(0.486, 0.227, 0.929, 1.0)
+    static let mint   = SIMD4<Float>(0.431, 0.906, 0.659, 1.0)  // #6EE7A8
+    static let violet = SIMD4<Float>(0.486, 0.227, 0.929, 1.0)  // #7C3AED
 
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
-    private var configs: [OrbConfig]
-    private var size = SIMD2<Float>(600, 200)
+    private var configs: [OrbConfig]      // base in PIXELS (resolved by caller)
+    private var size = SIMD2<Float>(800, 280)
 
     init?(device: MTLDevice, orbs: [OrbConfig]) {
         guard let queue = device.makeCommandQueue(),
@@ -58,10 +58,10 @@ final class OrbRenderer {
         att.isBlendingEnabled = true
         att.rgbBlendOperation = .add
         att.alphaBlendOperation = .add
-        att.sourceRGBBlendFactor = .one              // premultiplied
-        att.destinationRGBBlendFactor = .oneMinusSourceAlpha
+        att.sourceRGBBlendFactor = .one        // additive — overlap glows brighter
+        att.destinationRGBBlendFactor = .one
         att.sourceAlphaBlendFactor = .one
-        att.destinationAlphaBlendFactor = .oneMinusSourceAlpha
+        att.destinationAlphaBlendFactor = .one
         do { pipeline = try device.makeRenderPipelineState(descriptor: rp) }
         catch { return nil }
     }
@@ -91,7 +91,6 @@ final class OrbRenderer {
             enc.setFragmentBytes(&u, length: MemoryLayout<OrbUniforms>.stride, index: 0)
             enc.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 6)
         }
-
         enc.endEncoding()
         cmd.present(drawable)
         cmd.commit()
