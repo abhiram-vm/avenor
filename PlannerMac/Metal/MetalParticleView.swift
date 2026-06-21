@@ -3,8 +3,8 @@ import MetalKit
 final class MetalParticleView: MTKView, MTKViewDelegate {
     private var renderer: ParticleRenderer?
     private let semaphore = DispatchSemaphore(value: 3)
-    private var mode: Int = 0
-    private var captureResetPending = false
+    private var mode: Int = 0            // 0 idle, 1 focus
+    private var capturePending = false
     var reduceMotion: Bool = false
 
     init() {
@@ -27,10 +27,7 @@ final class MetalParticleView: MTKView, MTKViewDelegate {
 
     func triggerFocus() { mode = 1 }
     func triggerIdle()  { mode = 0 }
-    func triggerCapture() {
-        mode = 2
-        captureResetPending = true   // consumed after one drawn frame
-    }
+    func triggerCapture() { capturePending = true }   // applied once on next frame
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
         renderer?.resize(to: size)
@@ -38,17 +35,8 @@ final class MetalParticleView: MTKView, MTKViewDelegate {
 
     func draw(in view: MTKView) {
         guard let renderer else { return }
+        if capturePending { capturePending = false; renderer.burst() }
         semaphore.wait()
-        // mode 0 passes .zero so the renderer uses its computed default center;
-        // focus/capture pass the live bar center (current bounds midpoint).
-        let activeCenter: SIMD2<Float> = (mode == 0)
-            ? .zero
-            : SIMD2<Float>(Float(bounds.midX), Float(bounds.midY))
-        renderer.draw(in: view, mode: mode, captureBarCenter: activeCenter,
-                      reduceMotion: reduceMotion, semaphore: semaphore)
-        if captureResetPending {     // capture is a one-frame impulse → back to focus
-            captureResetPending = false
-            mode = 1
-        }
+        renderer.draw(in: view, mode: mode, reduceMotion: reduceMotion, semaphore: semaphore)
     }
 }
