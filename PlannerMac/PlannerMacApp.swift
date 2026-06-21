@@ -61,6 +61,9 @@ struct PlannerMacApp: App {
             if let container {
                 Mac_ContentView()
                     .environment(theme)
+                    // Global mint accent — kills every system-blue selection /
+                    // focus state app-wide. No native control keeps blue.
+                    .tint(Mac_Accent.mint)
                     .task {
                         // One-shot, system-cached after the first prompt.
                         await NotificationManager.shared.requestAuthorization()
@@ -84,7 +87,7 @@ struct PlannerMacApp: App {
                 }
             }
         }
-        .defaultSize(width: 980, height: 640)
+        .defaultSize(width: 1180, height: 780)
         // Blend the title bar into the canvas — no default chrome separation.
         .windowStyle(.hiddenTitleBar)
         .commands { macCommands }
@@ -127,13 +130,22 @@ struct PlannerMacApp: App {
                 .keyboardShortcut("4", modifiers: .command)
             Button("Calendar") { nav?.selection = .calendar }
                 .keyboardShortcut("5", modifiers: .command)
+            Button("Routines") { nav?.selection = .routines }
+                .keyboardShortcut("6", modifiers: .command)
 
             Divider()
 
-            // Notes-pane commands. Harmless when another pane is active — they
-            // flip nav tokens the Notes pane reads; nothing else observes them.
-            Button("Find in Notes") { nav?.notesFocusSearchToken = true }
-                .keyboardShortcut("f", modifiers: .command)
+            // ⌘F is context-aware (mirrors ⌘N): the Tasks pane focuses its
+            // inline search; the Notes pane focuses its search field. Inert
+            // elsewhere — both are nav tokens the destination pane resets.
+            Button("Find") {
+                if nav?.selection == .tasks {
+                    nav?.tasksFocusSearchToken = true
+                } else {
+                    nav?.notesFocusSearchToken = true
+                }
+            }
+            .keyboardShortcut("f", modifiers: .command)
             Button("Toggle Backlinks") { nav?.notesShowBacklinks.toggle() }
                 .keyboardShortcut("b", modifiers: [.command, .shift])
             Button("Reading Mode") { nav?.notesReadingMode.toggle() }

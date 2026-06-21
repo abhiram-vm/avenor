@@ -165,6 +165,20 @@ struct AddTaskIntent: AppIntent {
                 context: context
             )
             savedTitle = title
+
+        case .goal(let title, let targetValue, let unit, _):
+            // macOS Shortcuts/Siri: a numeric-target capture creates a goal. A
+            // fresh insert is not a mutation, so it bypasses GoalMutator (same
+            // pattern as the Mac capture bar). An undetected unit defaults to a
+            // generic "sessions" measure — there's no picker in the background.
+            // Gated behind `#if os(macOS)` so iOS keeps its exhaustive switch.
+            let goalUnit: GoalUnit = unit.map {
+                .custom(label: $0.capitalized, symbol: $0, allowsDecimals: false, isPrefixSymbol: false)
+            } ?? .preset(.sessions)
+            let goal = PersistedGoal(title: title, unit: goalUnit,
+                                     currentValue: 0, targetValue: targetValue)
+            context.insert(goal)
+            savedTitle = title
         #endif
         }
 
