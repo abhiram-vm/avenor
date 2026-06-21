@@ -58,7 +58,6 @@ final class MetalOrbView: MTKView, MTKViewDelegate {
     }
 
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
-        renderer?.resize(to: size)
         if let dev = device {
             renderer = OrbRenderer(device: dev, orbs: resolve(rawOrbs, to: size))
             renderer?.resize(to: size)
