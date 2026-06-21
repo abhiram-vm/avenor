@@ -27,6 +27,7 @@ struct Mac_CaptureBar: View {
     @State private var flash = false
     /// Goal awaiting a unit choice — drives the unit-picker sheet.
     @State private var pendingGoal: Mac_PendingGoal?
+    @State private var particleView = MetalParticleView()
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -67,6 +68,11 @@ struct Mac_CaptureBar: View {
                 .padding(-8)
         }
         .background(shape.fill(.ultraThinMaterial))
+        .background(
+            MetalParticleViewRepresentable(view: particleView, reduceMotion: reduceMotion)
+                .allowsHitTesting(false)
+                .clipShape(shape)
+        )
         .overlay(specular(shape))
         .overlay(shape.strokeBorder(borderColor(p), lineWidth: flash ? 1.5 : 1))
         .clipShape(shape)
@@ -75,6 +81,9 @@ struct Mac_CaptureBar: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: focused)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: flash)
         .onAppear { focused = true }
+        .onChange(of: focused) { _, isFocused in
+            isFocused ? particleView.triggerFocus() : particleView.triggerIdle()
+        }
         .onChange(of: shouldFocus.wrappedValue) { _, newValue in
             if newValue {
                 focused = true
@@ -205,8 +214,9 @@ struct Mac_CaptureBar: View {
         try? modelContext.save()
         text = ""
 
-        // Mint capture flash, then fade back to idle.
+        // Mint capture flash + particle burst, then fade back to idle.
         flash = true
+        particleView.triggerCapture()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             flash = false
         }

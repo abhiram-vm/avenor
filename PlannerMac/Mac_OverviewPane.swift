@@ -25,6 +25,9 @@ struct Mac_OverviewPane: View {
     @Query private var notes: [PersistedNote]
     @Query private var habits: [PersistedHabit]
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var orbView = MetalOrbView()
+
     /// Today's calendar events, refreshed on appear (EventKit is not a SwiftData
     /// source, so it can't drive an `@Query`).
     @State private var todaysEvents: [EKEvent] = []
@@ -83,48 +86,57 @@ struct Mac_OverviewPane: View {
 
     var body: some View {
         let p = theme.palette
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Editorial hero — "Today's Overview", date + due-count floated right.
-                Mac_DisplayTitle(
-                    title: "Today's Overview",
-                    metaLabel: todayMeta,
-                    accentCallout: dueToday.isEmpty ? nil : "\(dueToday.count) DUE",
-                    size: 80
-                )
-                .padding(.bottom, 28)
-
-                Mac_DailyStatsGrid(
-                    tasksCompleted: tasksCompletedToday,
-                    goalsProgressed: goalsProgressedToday,
-                    notesCaptured: notesToday,
-                    activeStreaks: activeStreaks
-                )
-                .padding(.bottom, 40)
-
-                if isEverythingEmpty {
-                    Mac_CinematicEmpty(
-                        headline: "nothing\nto show",
-                        footnote: "Capture below to fill the day."
+        ZStack(alignment: .top) {
+            p.canvasView                                   // opaque base (was .themedCanvas)
+            MetalOrbViewRepresentable(view: orbView, reduceMotion: reduceMotion)
+                .frame(maxWidth: .infinity)
+                .frame(height: 200)
+                .clipped()
+                .allowsHitTesting(false)
+                .frame(maxHeight: .infinity, alignment: .top)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Editorial hero — "Today's Overview", date + due-count floated right.
+                    Mac_DisplayTitle(
+                        title: "Today's Overview",
+                        metaLabel: todayMeta,
+                        accentCallout: dueToday.isEmpty ? nil : "\(dueToday.count) DUE",
+                        size: 80
                     )
-                    .padding(.top, 8)
-                } else {
-                    VStack(alignment: .leading, spacing: 30) {
-                        eventsSection(p)
-                        tasksSection(p)
-                        goalsSection(p)
-                        notesSection(p)
-                        // Section 5: Routines — deferred until iOS sync confirmed.
+                    .padding(.bottom, 28)
+
+                    Mac_DailyStatsGrid(
+                        tasksCompleted: tasksCompletedToday,
+                        goalsProgressed: goalsProgressedToday,
+                        notesCaptured: notesToday,
+                        activeStreaks: activeStreaks
+                    )
+                    .padding(.bottom, 40)
+
+                    if isEverythingEmpty {
+                        Mac_CinematicEmpty(
+                            headline: "nothing\nto show",
+                            footnote: "Capture below to fill the day."
+                        )
+                        .padding(.top, 8)
+                    } else {
+                        VStack(alignment: .leading, spacing: 30) {
+                            eventsSection(p)
+                            tasksSection(p)
+                            goalsSection(p)
+                            notesSection(p)
+                            // Section 5: Routines — deferred until iOS sync confirmed.
+                        }
                     }
                 }
+                .padding(.horizontal, 56)
+                .padding(.top, 60)
+                .padding(.bottom, 48)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 56)
-            .padding(.top, 60)
-            .padding(.bottom, 48)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .themedCanvas(p)
         .task { await refreshEvents() }
+        .onAppear { orbView.fadeIn(duration: 0.8) }
         .onChange(of: nav.selection) { _, pane in
             if pane == .overview { Task { await refreshEvents() } }
         }
