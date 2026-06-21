@@ -90,7 +90,7 @@ struct Mac_OverviewPane: View {
             p.canvasView                                   // opaque base (was .themedCanvas)
             MetalOrbViewRepresentable(view: orbView, reduceMotion: reduceMotion)
                 .frame(maxWidth: .infinity)
-                .frame(height: 200)
+                .frame(height: 280)
                 .clipped()
                 .allowsHitTesting(false)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -136,7 +136,7 @@ struct Mac_OverviewPane: View {
             }
         }
         .task { await refreshEvents() }
-        .onAppear { orbView.fadeIn(duration: 0.8) }
+        .onAppear { orbView.fadeIn(duration: 1.0) }
         .onChange(of: nav.selection) { _, pane in
             if pane == .overview { Task { await refreshEvents() } }
         }
