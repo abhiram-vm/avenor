@@ -25,6 +25,7 @@ final class ParticleRenderer {
     private var size = SIMD2<Float>(400, 100)   // drawable px (set in resize)
     private var lastTime = CACurrentMediaTime()
     private var elapsed: Float = 0
+    private var seeded = false
 
     // CPU simulation state.
     private struct P {
@@ -72,7 +73,6 @@ final class ParticleRenderer {
             _ in device.makeBuffer(length: len, options: .storageModeShared)
         }
         guard vertexBuffers.count == Self.bufferCount else { return nil }
-        seed()
     }
 
     private func gaussian() -> Float {
@@ -98,7 +98,8 @@ final class ParticleRenderer {
 
     func resize(to s: CGSize) {
         size = SIMD2<Float>(max(Float(s.width), 1), max(Float(s.height), 1))
-        if particles.isEmpty { seed() }
+        // Seed once, on the first REAL drawable size (init/zero-bounds give 1x1).
+        if !seeded && size.x > 1 { seed(); seeded = true }
     }
 
     /// Capture: kick every particle radially outward from the bar's bottom-center.
@@ -109,7 +110,7 @@ final class ParticleRenderer {
             var dir = pos - origin
             let len = simd_length(dir)
             dir = len > 1e-4 ? dir / len : SIMD2<Float>(0, -1)
-            particles[i].burstVel += dir * Float.random(in: 270...540)  // peak ≈ 40..80px
+            particles[i].burstVel += dir * Float.random(in: 270...540)  // px/s impulse; spring+damping yields ~40..80px peak displacement
         }
     }
 
