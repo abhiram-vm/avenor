@@ -37,14 +37,15 @@ final class MetalParticleView: MTKView, MTKViewDelegate {
     }
 
     func draw(in view: MTKView) {
+        guard let renderer else { return }
         semaphore.wait()
         // mode 0 passes .zero so the renderer uses its computed default center;
         // focus/capture pass the live bar center (current bounds midpoint).
         let activeCenter: SIMD2<Float> = (mode == 0)
             ? .zero
             : SIMD2<Float>(Float(bounds.midX), Float(bounds.midY))
-        renderer?.draw(in: view, mode: mode, captureBarCenter: activeCenter,
-                       reduceMotion: reduceMotion, semaphore: semaphore)
+        renderer.draw(in: view, mode: mode, captureBarCenter: activeCenter,
+                      reduceMotion: reduceMotion, semaphore: semaphore)
         if captureResetPending {     // capture is a one-frame impulse → back to focus
             captureResetPending = false
             mode = 1
