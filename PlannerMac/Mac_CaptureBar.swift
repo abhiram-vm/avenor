@@ -72,16 +72,15 @@ struct Mac_CaptureBar: View {
         .overlay(specular(shape))
         .overlay(shape.strokeBorder(borderColor(p), lineWidth: flash ? 1.5 : 1))
         .clipShape(shape)
-        // Particle field — sits BEHIND the glass (added after the bloom/material
-        // so it composites underneath), and is intentionally taller than the bar
-        // (≈52pt of headroom above its top) so particles have room to drift
-        // upward. Placed AFTER `.clipShape(shape)` so the bar's rounded clip never
-        // crops it; it is clipped only to its OWN frame. Never intercepts input.
-        .background(alignment: .bottom) {
+        // Particle field — a 100pt band of glowing mint stars sitting directly
+        // ABOVE the bar: an overlay (so the bar's rounded clip never crops it),
+        // full bar width, 100pt tall, offset up by its own height so its bottom
+        // edge meets the bar's top. Never intercepts input.
+        .overlay(alignment: .top) {
             MetalParticleViewRepresentable(view: particleView, reduceMotion: reduceMotion)
                 .frame(maxWidth: .infinity)
-                .frame(height: 112)
-                .clipped(antialiased: false)
+                .frame(height: 100)
+                .offset(y: -100)
                 .allowsHitTesting(false)
         }
         .padding(.horizontal, 18)
